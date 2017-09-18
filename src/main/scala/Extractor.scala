@@ -22,13 +22,14 @@ object Extractor extends App {
 
 
   trait Extractor[In] {
-    def extract(f: PatternFinder[Any])(t: In): Seq[f.Pattern]
+    final def extract(f: PatternFinder[Any])(t: In): Seq[f.Pattern] = extractSelf(f)(t) ++ extractInner(f)(t)
+    protected def extractInner(f: PatternFinder[Any])(t: In): Seq[f.Pattern]
+    final protected def extractSelf(f: PatternFinder[Any])(t: In): Seq[f.Pattern] = f.patternMatch(t)
   }
   object Extractor {
     def apply[T](implicit ext: Extractor[T]): Extractor[T] = ext
     def terminal[T]: Extractor[T] = new Extractor[T] {
-      override def extract(f: PatternFinder[Any])(t: T): Seq[f.Pattern] =
-        f.patternMatch(t)
+      override protected def extractInner(f: PatternFinder[Any])(t: T): Seq[f.Pattern] = Seq()
     }
 
     implicit def extractString = terminal[String]
@@ -38,13 +39,13 @@ object Extractor extends App {
 
     implicit def extractHList[H, T <: HList](implicit hExt: Extractor[H], tExt: Extractor[T]) : Extractor[H :: T] =
       new Extractor[H::T] {
-        override def extract(f: PatternFinder[Any])(l: H::T): Seq[f.Pattern] =
-          f.patternMatch(l.head) ++ hExt.extract(f)(l.head) ++ tExt.extract(f)(l.tail)
+        override def extractInner(f: PatternFinder[Any])(l: H::T): Seq[f.Pattern] =
+          hExt.extract(f)(l.head) ++ tExt.extractInner(f)(l.tail)
       }
     implicit def extractGen[T, R](implicit gen: Generic.Aux[T,R], ext: Extractor[R]): Extractor[T] =
       new Extractor[T] {
-        override def extract(f: PatternFinder[Any])(t: T): Seq[f.Pattern] =
-          f.patternMatch(t) ++ ext.extract(f)(gen.to(t))
+        override def extractInner(f: PatternFinder[Any])(t: T): Seq[f.Pattern] =
+          ext.extractInner(f)(gen.to(t))
       }
   }
 
@@ -52,9 +53,10 @@ object Extractor extends App {
     case s: String => Seq(s)
     case _ => Seq()
   })
-  val all = PatternFinder(Seq(_: Any))
+  val all: PatternFinder[Any] = PatternFinder(Seq(_: Any))
   println(Extractor[String :: String :: HNil].extract(all)("Coucou" :: "Caca" :: HNil))
   println(Extractor[String].extract(pat)("coucou"))
   println(Extractor[(Int,String)].extract(all)((1, "A")))
+  println(Extractor[((Int,String),String)].extract(all)(((1,"AA"), "A")))
 }
 
