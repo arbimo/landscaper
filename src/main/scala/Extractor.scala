@@ -19,6 +19,14 @@ object Extractor extends App {
         type Pattern = Out
         override def patternMatch(in: In): Seq[Pattern] = f(in)
       }
+
+    def apply[In,Out](f: PartialFunction[In, Seq[Out]]): Aux[In,Out] =
+      new PatternFinder[In] {
+        type Pattern = Out
+        override def patternMatch(in: In): Seq[Pattern] =
+          if(f.isDefinedAt(in)) f(in) else Seq()
+      }
+
   }
 
   trait Extractor[In] {
@@ -96,6 +104,7 @@ object Extractor extends App {
       case s: String => Seq(s)
       case _         => Seq()
   })
+  val ints: PatternFinder.Aux[Any,Int] = PatternFinder({ case x: Int => Seq(x) }: PartialFunction[Any,Seq[Int]])
   val all: PatternFinder[Any] = PatternFinder(Seq(_: Any))
   println(
     Extractor[String :: String :: HNil]
@@ -109,5 +118,5 @@ object Extractor extends App {
 
   println("DATA:")
   println(Extractor[Seq[Node]].extract(pat)(data).mkString("\n"))
-  println(data.extract(pat))
+  println(data.extract(ints))
 }
