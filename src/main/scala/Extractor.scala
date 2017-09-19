@@ -1,3 +1,4 @@
+import org.scalatest.FunSuite
 import witness.IterableWitness
 
 package object extraction {
@@ -11,7 +12,7 @@ package object extraction {
   }
 
   object PatternFinder {
-    type Aux[In, Out] = PatternFinder[In] {type Pattern}
+    type Aux[In, Out] = PatternFinder[In] { type Pattern }
 
     def apply[In, Out](f: In => Seq[Out]): Aux[In, Out] =
       new PatternFinder[In] {
@@ -29,9 +30,12 @@ package object extraction {
       }
   }
 
-  def pattern[Out](pf: PartialFunction[Any, Seq[Out]]): PatternFinder.Aux[Any, Out] = PatternFinder(pf)
+  def pattern[Out](
+      pf: PartialFunction[Any, Seq[Out]]): PatternFinder.Aux[Any, Out] =
+    PatternFinder(pf)
 
   trait Extractor[In] {
+
     /** Lookup for pattern in t and all constituent of t */
     final def extract(f: PatternFinder[Any])(t: In): Seq[f.Pattern] =
       f.patternMatch(t) ++ extractInner(f)(t)
@@ -45,97 +49,114 @@ package object extraction {
 
     def terminal[T]: Extractor[T] = new Extractor[T] {
       override protected def extractInner(f: PatternFinder[Any])(
-        t: T): Seq[f.Pattern] = Seq()
+          t: T): Seq[f.Pattern] = Seq()
     }
 
     // anything identified as a literal is terminal node
-    implicit def extractLiteral[T: witness.LiteralWitness]: Extractor[T] = terminal[T]
+    implicit def extractLiteral[T: witness.LiteralWitness]: Extractor[T] =
+      terminal[T]
 
     implicit def extractHList[H, T <: HList](
-                                              implicit hExt: Extractor[H],
-                                              tExt: Extractor[T]): Extractor[H :: T] =
+        implicit hExt: Lazy[Extractor[H]],
+        tExt: Extractor[T]): Extractor[H :: T] =
       new Extractor[H :: T] {
         override def extractInner(f: PatternFinder[Any])(
-          l: H :: T): Seq[f.Pattern] =
-          hExt.extract(f)(l.head) ++ tExt.extractInner(f)(l.tail)
+            l: H :: T): Seq[f.Pattern] =
+          hExt.value.extract(f)(l.head) ++ tExt.extractInner(f)(l.tail)
       }
 
     implicit def extractCoproduct[H, T <: Coproduct](
-                                                      implicit hExt: Extractor[H],
-                                                      tExt: Extractor[T]): Extractor[H :+: T] =
+        implicit hExt: Lazy[Extractor[H]],
+        tExt: Extractor[T]): Extractor[H :+: T] =
       new Extractor[H :+: T] {
         override protected def extractInner(f: PatternFinder[Any])(
-          t: H :+: T): Seq[f.Pattern] =
+            t: H :+: T): Seq[f.Pattern] =
           t match {
-            case Inl(x) => hExt.extractInner(f)(x)
+            case Inl(x) => hExt.value.extractInner(f)(x)
             case Inr(x) => tExt.extractInner(f)(x)
           }
       }
 
     /** Extractor for anything wit a Generic representation */
     implicit def extractGen[T, R](implicit gen: Generic.Aux[T, R],
-                                  ext: Extractor[R]): Extractor[T] =
+                                  ext: Lazy[Extractor[R]]): Extractor[T] =
       new Extractor[T] {
         override def extractInner(f: PatternFinder[Any])(t: T): Seq[f.Pattern] =
-          ext.extractInner(f)(gen.to(t))
+          ext.value.extractInner(f)(gen.to(t))
       }
 
     implicit def extractIterable[T](
-                                     implicit ext: Extractor[T]): Extractor[Iterable[T]] =
+        implicit ext: Extractor[T]): Extractor[Iterable[T]] =
       new Extractor[Iterable[T]] {
         override protected def extractInner(f: PatternFinder[Any])(
-          t: Iterable[T]): Seq[f.Pattern] =
+            t: Iterable[T]): Seq[f.Pattern] =
           t.flatMap(e => ext.extract(f)(e)).toSeq
       }
 
     /** Extract any collection explicitly flagged by an IterableWitness.
       * This is mainly to avoid overloading implici for types such as HList. */
     implicit def extractCollection[Content, Coll](
-                                                   implicit iter: IterableWitness[Coll, Content],
-                                                   ext: Extractor[Iterable[Content]]): Extractor[Coll] =
+        implicit iter: IterableWitness[Coll, Content],
+        ext: Extractor[Iterable[Content]]): Extractor[Coll] =
       new Extractor[Coll] {
         override protected def extractInner(f: PatternFinder[Any])(
-          t: Coll): Seq[f.Pattern] =
+            t: Coll): Seq[f.Pattern] =
           ext.extractInner(f)(iter.asIterable(t))
       }
   }
 
-  object ops {
+  object syntax {
     implicit class ExtractorOps[T](value: T)(implicit ext: Extractor[T]) {
       def extract(t: PatternFinder[Any]): Seq[t.Pattern] = ext.extract(t)(value)
     }
 
   }
-  def extract[T : Extractor](pf: PatternFinder[Any])(input: T): Seq[pf.Pattern] =
+  def extract[T: Extractor](pf: PatternFinder[Any])(input: T): Seq[pf.Pattern] =
     the[Extractor[T]].extract(pf)(input)
 
 }
 
-object ExtractorTest extends App {
+object ExtractorTest extends FunSuite {
   import extraction._
 
   val strings = pattern { case x: String => Seq(x) }
-  val ints = pattern { case x: Int => Seq(x) }
-  val all = pattern { case x:Any => Seq(x) }
+  val ints = pattern { case x: Int       => Seq(x) }
+  val all = pattern { case x: Any        => Seq(x) }
 
-  import ops._
-  assert("A".extract(strings) == Seq("A"))
-  assert(1.extract(strings) == Seq())
-  assert(1.extract(ints) == Seq(1))
+  test("singleton literal extraction") {
+    import syntax._
+    assert("A".extract(strings) == Seq("A"))
+    assert(1.extract(strings) == Seq())
+    assert(1.extract(ints) == Seq(1))
+  }
 
-  sealed trait Node
-  case class Named(name: String, node: Literal) extends Node
-  case class Literal(content: String) extends Node
+  test("ADT extraction") {
+    sealed trait Node
+    case class Named(name: String, node: Literal) extends Node
+    case class Literal(content: String) extends Node
 
-  val lit = pattern { case x: Literal => Seq(x) }
-  val named = pattern { case x: Named => Seq(x) }
+    val lit = pattern { case x: Literal => Seq(x) }
+    val named = pattern { case x: Named => Seq(x) }
 
-  val data: Seq[Node] =
-    Seq(Literal("X"), Named("first", Literal("X")), Literal("Y"))
+    val data: Seq[Node] =
+      Seq(Literal("X"), Named("first", Literal("X")), Literal("Y"))
 
-  assert(extract(strings)(data) == Seq("X","first","X","Y"))
-  assert(extract(ints)(data) == Seq())
-  assert(extract(lit)(data) == Seq(Literal("X"), Literal("X"), Literal("Y")))
+    assert(extract(strings)(data) == Seq("X", "first", "X", "Y"))
+    assert(extract(ints)(data) == Seq())
+    assert(extract(lit)(data) == Seq(Literal("X"), Literal("X"), Literal("Y")))
 
-  assert(extract(all)((1,2.0,"A")) == Seq((1,2.0,"A"), 1, 2.0, "A"))
+    assert(extract(all)((1, 2.0, "A")) == Seq((1, 2.0, "A"), 1, 2.0, "A"))
+  }
+
+  test("recursive tree exraction") {
+    sealed trait Tree
+    case class Branch(left: Tree, right: Tree) extends Tree
+    case class Leaf(content: String) extends Tree
+
+    val tree = Branch(
+      Branch(Leaf("A"), Leaf("B")),
+      Branch(Leaf("C"), Leaf("D"))
+    )
+    assert(extract(strings)(tree) == Seq("A", "B", "C", "D"))
+  }
 }
