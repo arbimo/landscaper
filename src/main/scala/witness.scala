@@ -2,7 +2,7 @@ import shapeless.HNil
 
 import shapeless._
 
-object witness {
+package object witness {
 
   trait LiteralWitness[T]
   object LiteralWitness {
