@@ -33,6 +33,18 @@ package object rewrite {
 
           (hf.value.rewrite(f, in.head) :: tf.rewrite(f, in.tail).asInstanceOf[TRes2]).asInstanceOf[hf.value.Result :: TRes2]
       }
+
+    implicit def genFunc[FIn,FOut, In, ReprBeforeTrans, ReprAfterTrans](
+                                      implicit gen: Generic.Aux[In,ReprBeforeTrans],
+                                      rFunc: Func.Aux[FIn, FOut, ReprBeforeTrans, ReprAfterTrans],
+                                      ev: ReprBeforeTrans =:= ReprAfterTrans
+                                      ): Func.Aux[FIn, FOut, In, In] =
+      new Func[FIn, FOut, In] {
+        override type Result = In
+
+        override def rewrite(f: (FIn) => FOut, in: In): In =
+          gen.from(rFunc.rewrite(f, gen.to(in)).asInstanceOf[ReprBeforeTrans])
+      }
   }
 
 

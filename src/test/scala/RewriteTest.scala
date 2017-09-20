@@ -55,12 +55,29 @@ class RewriteTest extends FunSuite {
       rewrite(toLowerCase, rewrite(intToString, "A" :: 1 :: HNil)),
       "a" :: "1" :: HNil
     )
-    check(
-      rewrite(toLowerCase, rewrite(intToString, 1 :: "A" :: HNil)),
-      "1" :: "a" :: HNil
+    assertResult(
+      "1" :: "a" :: HNil)(
+      rewrite(toLowerCase, rewrite(intToString, 1 :: "A" :: HNil))
     )
   }
 
+  test("case-class") {
+    case class A(b: B, c: C)
+    case class B(s: String)
+    case class C(i: Int, s: String)
+    assertCompiles("Func[String,String,C]")
+    assertDoesNotCompile("Func[Int, String, C]")
+
+    check(
+      rewrite(toLowerCase, C(1, "A")),
+      C(1, "a")
+    )
+    check(
+      rewrite(toLowerCase, A(B("AA"), C(1, "BB"))),
+      A(B("aa"), C(1, "bb"))
+    )
+  }
+  Tuple2
 
   test("typing") {
     assertCompiles(
