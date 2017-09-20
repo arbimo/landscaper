@@ -10,6 +10,7 @@ package object witness {
     implicit object stringWitness extends LiteralWitness[String]
     implicit object doubleWitness extends LiteralWitness[Double]
     implicit object hnilWitness extends LiteralWitness[HNil]
+    implicit object hnilTypeWitness extends LiteralWitness[HNil.type]
     implicit object cnilWitness extends LiteralWitness[CNil]
   }
 

@@ -1,4 +1,5 @@
 import shapeless._
+import witness.LiteralWitness
 
 package object rewrite {
 
@@ -8,7 +9,7 @@ package object rewrite {
   }
 
   trait LowPriority {
-    implicit def identity[FIn, FOut, In]: Func.Aux[FIn, FOut, In, In] =
+    implicit def identity[FIn, FOut, In : LiteralWitness]: Func.Aux[FIn, FOut, In, In] =
       new DefaultFunc[FIn, FOut, In]
   }
   object Func extends LowPriority {
@@ -18,18 +19,22 @@ package object rewrite {
 
     implicit def param[In, Out]: Aux[In, Out, In, Out] = new ParamFunc[In, Out]
 
-//    implicit def hListFunc[FIn, FOut, H, T <: HList](
-//        implicit hf: Lazy[Func[FIn, FOut, H]],
-//        tf: Func[FIn, FOut, T]
-//    ): Func.Aux[FIn, FOut, H :: T, hf.value.Result :: tf.Result] =
-//      new Func[FIn, FOut, H :: T] {
-//        type Result = hf.value.Result :: tf.Result
-//
-//        override def rewrite(f: (FIn) => FOut,
-//                             in: H :: T): hf.value.Result :: tf.Result =
-//          hf.value.rewrite(f, in.head) :: tf.rewrite(f, in.tail)
-//      }
+    implicit def hListFunc[FIn, FOut, H, T <: HList, TRes1, TRes2 <: HList](
+        implicit hf: Lazy[Func[FIn, FOut, H]],
+        tf: Func.Aux[FIn, FOut, T, TRes1],
+        ev: TRes1 =:= TRes2
+    ): Func.Aux[FIn, FOut, H :: T, hf.value.Result :: TRes2] =
+      new Func[FIn, FOut, H :: T] {
+        type Result = hf.value.Result :: TRes2
+
+        // FIXME: we shouldn't have to tell the compiler the types it is handling (perhaps this is due to the =:= constraint
+        override def rewrite(f: (FIn) => FOut,
+                             in: H :: T): hf.value.Result :: TRes2 =
+
+          (hf.value.rewrite(f, in.head) :: tf.rewrite(f, in.tail).asInstanceOf[TRes2]).asInstanceOf[hf.value.Result :: TRes2]
+      }
   }
+
 
   final class DefaultFunc[FIn, FOut, In] extends Func[FIn, FOut, In] {
     type Result = In
