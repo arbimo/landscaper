@@ -91,12 +91,15 @@ object Poly1Test extends App {
     def apply[FIn, FOut, In](implicit ev: Func[FIn, FOut, In]) = ev
     implicit def param[In, Out]: Func[In, Out, In] = new ParamFunc[In, Out]
 
-    implicit def hListLast[FIn, FOut, H](implicit ev: Func[FIn,FOut,H]): Func[FIn,FOut, H::HNil] =
-      new Func[FIn,FOut,H::HNil] {
-        type Result = ev.Result :: HNil
+    implicit def hListFunc[FIn, FOut, H, T <: HList, HRes, TRes <: HList](
+                                                      implicit hf: Lazy[Func.Aux[FIn,FOut,H,HRes]],
+                                                      tf: Func.Aux[FIn, FOut, T, TRes]
+                                                    ): Func[FIn,FOut, H::T] =
+      new Func[FIn,FOut,H::T] {
+        type Result = HRes :: TRes
 
-        override def compute(f: (FIn) => FOut, in: ::[H, HNil]): ::[ev.Result, HNil] =
-          ev.compute(f, in.head) :: HNil
+        override def compute(f: (FIn) => FOut, in: H::T): HRes :: TRes =
+          hf.value.compute(f, in.head).asInstanceOf[HRes] :: tf.compute(f, in.tail).asInstanceOf[TRes]
       }
 
     def on[FIn, FOut, In](f: FIn => FOut)(value: In)(
@@ -112,6 +115,7 @@ object Poly1Test extends App {
     type Result = Out
     override def compute(f: (In) => Out, in: In): Out = f(in)
   }
+//  final class HListFunc[FIn,FOut, In <: HList, Out <: HList] extends Func[FIn,FOut,In]
 
   val f = (x: Int) => "int: " + x
 
@@ -121,5 +125,6 @@ object Poly1Test extends App {
     func.compute(f, value)
 
   println(applyOn(f, "A"))
-  println(applyOn(f, 1::HNil))
+  println(applyOn(f, 1::"A"::HNil))
+  println(applyOn(((tup: (Int,String)) => tup._1), (1,"A") :: HNil))
 }
