@@ -90,6 +90,15 @@ object Poly1Test extends App {
     type Aux[FIn, FOut, In, Result] = Func[FIn, FOut, In] { type Result }
     def apply[FIn, FOut, In](implicit ev: Func[FIn, FOut, In]) = ev
     implicit def param[In, Out]: Func[In, Out, In] = new ParamFunc[In, Out]
+
+    implicit def hListLast[FIn, FOut, H](implicit ev: Func[FIn,FOut,H]): Func[FIn,FOut, H::HNil] =
+      new Func[FIn,FOut,H::HNil] {
+        type Result = ev.Result :: HNil
+
+        override def compute(f: (FIn) => FOut, in: ::[H, HNil]): ::[ev.Result, HNil] =
+          ev.compute(f, in.head) :: HNil
+      }
+
     def on[FIn, FOut, In](f: FIn => FOut)(value: In)(
         implicit ev: Func[FIn, FOut, In]) =
       ev.compute(f, value)
@@ -112,29 +121,5 @@ object Poly1Test extends App {
     func.compute(f, value)
 
   println(applyOn(f, "A"))
-
-  trait Swapper[T] {
-    def swap[FIn, FOut](f: FIn => FOut, value: T)(
-        implicit ev: Func[FIn, FOut, T]): ev.Result
-  }
-  object Swapper {
-    def apply[T](implicit ev: Swapper[T]): Swapper[T] = ev
-
-    implicit def litSwapper[T: LiteralWitness]: Swapper[T] = new Swapper[T] {
-      override def swap[FIn, FOut](f: FIn => FOut, value: T)(
-          implicit ev: Func[FIn, FOut, T]): ev.Result =
-        ev.compute(f, value)
-    }
-//    implicit def hlistSwapper[H, T <: HList](
-//        implicit hSwap: Lazy[Swapper[H]],
-//        tSwap: Swapper[T]): Swapper[H :: T] = new Swapper[H :: T] {
-//      override def swap[FIn, FOut, Result <: HList](f: FIn => FOut,
-//                                                        l: H :: T)(
-//          implicit ev: Func.Aux[FIn, FOut, H :: T, Result]): ev.Result =
-//        hSwap.value.swap(f, l.head) :: tSwap.swap(f, l.tail).asInstanceOf[HList]
-//    }
-  }
-
-  println(Swapper[Int].swap(f, 10))
-  println(Swapper[String].swap(f, "A"))
+  println(applyOn(f, 1::HNil))
 }
