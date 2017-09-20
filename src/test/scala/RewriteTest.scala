@@ -11,8 +11,6 @@ class RewriteTest extends FunSuite {
     assert(in === out)
   }
 
-  println(Func[Int, Int, String])
-
   test("literals") {
     check(
       rewrite(intToString, 1),
@@ -32,34 +30,34 @@ class RewriteTest extends FunSuite {
     )
   }
 
-  test("hlist") {
-    check(
-      rewrite(intToString, HNil),
-      HNil
-    )
-    check(
-      rewrite(intToString, 1 :: HNil),
-      "1" :: HNil
-    )
-    check(
-      rewrite(toLowerCase, 1 :: "A" :: HNil),
-      1 :: "a" :: HNil
-    )
-    check(
-      rewrite(intToString, 1 :: "A" :: HNil),
-      "1" :: "A" :: HNil
-    )
-    check(
-      rewrite(toLowerCase, "1" :: "A" :: HNil),
-      "1" :: "a" :: HNil
-    )
-    val tmp: String :: String :: HNil = rewrite(intToString, 1 :: "A" :: HNil).asInstanceOf[String :: String :: HNil]
-    check(tmp, "1" :: "A" :: HNil)
-    check(
-      rewrite(toLowerCase, tmp),
-      "1" :: "a" :: HNil
-    )
-  }
+//  test("hlist") {
+//    check(
+//      rewrite(intToString, HNil),
+//      HNil
+//    )
+//    check(
+//      rewrite(intToString, 1 :: HNil),
+//      "1" :: HNil
+//    )
+//    check(
+//      rewrite(toLowerCase, 1 :: "A" :: HNil),
+//      1 :: "a" :: HNil
+//    )
+//    check(
+//      rewrite(intToString, 1 :: "A" :: HNil),
+//      "1" :: "A" :: HNil
+//    )
+//    check(
+//      rewrite(toLowerCase, "1" :: "A" :: HNil),
+//      "1" :: "a" :: HNil
+//    )
+//    val tmp: String :: String :: HNil = rewrite(intToString, 1 :: "A" :: HNil).asInstanceOf[String :: String :: HNil]
+//    check(tmp, "1" :: "A" :: HNil)
+//    check(
+//      rewrite(toLowerCase, tmp),
+//      "1" :: "a" :: HNil
+//    )
+//  }
   test("typing") {
     assertCompiles(
       """
@@ -68,12 +66,17 @@ class RewriteTest extends FunSuite {
         |val res: String = rewrite(intToString, 1)
         |val res2: String = rewrite(intToString, "A")
       """.stripMargin)
-//    assertDoesNotCompile("val res: Int = rewrite(intToString, 1)")
+    assertDoesNotCompile("val res: Int = rewrite(intToString, 1)")
 
   }
+
+  Func[Int,String,Int]
+//  val res: String = rewrite(intToString, 1)
 
   test("wip") {
     val s: String = (new ParamFunc[Int,String]).rewrite(intToString, 1)
-    val s2: String = (Func[Int,String,Int]).rewrite(intToString, 1)
+    val s2: String = Func[Int,String,Int].rewrite(intToString, 1)
   }
+
+
 }
