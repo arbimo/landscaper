@@ -61,7 +61,4 @@ object eraser {
     )
   }
 
-  def erase[T : Eraser](pred: Predicate)(t: T): T = Eraser[T].erase(pred)(t)
-  def erase[T: Eraser](pred: PartialPredicate)(t: T): T =
-    Eraser[T].erase(pred)(t)
 }

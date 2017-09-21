@@ -133,18 +133,5 @@ object transformations {
         type Result = Out
         override def rewrite(f: (In) => Out, in: In): Out = f(in)
       }
-
   }
-
-  /** Transforms a data structure "d" using a function that is applied on all constituent of "d"
-    *
-    * @param f Function to apply recursively on the data structure.
-    * @param d Data structure to transform.
-    * @param func implicit representation of the transformation at the type level.
-    * @return
-    */
-  def rewrite[FIn, FOut, In](f: FIn => FOut, d: In)(
-      implicit func: Trans[FIn, FOut, In]): func.Result =
-    func.rewrite(f, d)
-
 }

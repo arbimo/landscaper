@@ -32,10 +32,6 @@ object extractor {
       }
   }
 
-  def pattern[Out](
-      pf: PartialFunction[Any, Seq[Out]]): PatternFinder.Aux[Any, Out] =
-    PatternFinder(pf)
-
   trait Extractor[In] {
 
     /** Lookup for pattern in t and all constituent of t */
@@ -113,7 +109,4 @@ object extractor {
     }
 
   }
-  def extract[T: Extractor](pf: PatternFinder[Any])(input: T): Seq[pf.Pattern] =
-    the[Extractor[T]].extract(pf)(input)
-
 }

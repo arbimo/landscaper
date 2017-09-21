@@ -27,11 +27,11 @@ class ExtractorTest extends FunSuite {
     val data: Seq[Node] =
       Seq(Literal("X"), Named("first", Literal("X")), Literal("Y"))
 
-    assert(extract(strings)(data) == Seq("X", "first", "X", "Y"))
-    assert(extract(ints)(data) == Seq())
-    assert(extract(lit)(data) == Seq(Literal("X"), Literal("X"), Literal("Y")))
+    assert(extract(strings, data) == Seq("X", "first", "X", "Y"))
+    assert(extract(ints, data) == Seq())
+    assert(extract(lit, data) == Seq(Literal("X"), Literal("X"), Literal("Y")))
 
-    assert(extract(all)((1, 2.0, "A")) == Seq((1, 2.0, "A"), 1, 2.0, "A"))
+    assert(extract(all, (1, 2.0, "A")) == Seq((1, 2.0, "A"), 1, 2.0, "A"))
   }
 
   test("recursive tree exraction") {
@@ -43,6 +43,6 @@ class ExtractorTest extends FunSuite {
       Branch(Leaf("A"), Leaf("B")),
       Branch(Leaf("C"), Leaf("D"))
     )
-    assert(extract(strings)(tree) == Seq("A", "B", "C", "D"))
+    assert(extract(strings, tree) == Seq("A", "B", "C", "D"))
   }
 }
