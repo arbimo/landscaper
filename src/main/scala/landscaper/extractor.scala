@@ -1,11 +1,8 @@
 package landscaper
 
-import landscaper.witness.IterableWitness
 import shapeless._
 
 object extractor {
-
-
 
   trait PatternFinder[In] {
     type Pattern
@@ -83,24 +80,16 @@ object extractor {
           ext.value.extractInner(f)(gen.to(t))
       }
 
-    implicit def extractIterable[T](
-        implicit ext: Extractor[T]): Extractor[Iterable[T]] =
-      new Extractor[Iterable[T]] {
+    implicit def extractIterable[T, Coll[_]](
+        implicit ext: Extractor[T],
+        ev: Coll[T] <:< Traversable[T]
+    ): Extractor[Coll[T]] =
+      new Extractor[Coll[T]] {
         override protected def extractInner(f: PatternFinder[Any])(
-            t: Iterable[T]): Seq[f.Pattern] =
+            t: Coll[T]): Seq[f.Pattern] =
           t.flatMap(e => ext.extract(f)(e)).toSeq
       }
 
-    /** Extract any collection explicitly flagged by an IterableWitness.
-      * This is mainly to avoid overloading implici for types such as HList. */
-    implicit def extractCollection[Content, Coll](
-        implicit iter: IterableWitness[Coll, Content],
-        ext: Extractor[Iterable[Content]]): Extractor[Coll] =
-      new Extractor[Coll] {
-        override protected def extractInner(f: PatternFinder[Any])(
-            t: Coll): Seq[f.Pattern] =
-          ext.extractInner(f)(iter.asIterable(t))
-      }
   }
 
   object syntax {
