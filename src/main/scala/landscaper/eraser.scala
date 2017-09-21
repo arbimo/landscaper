@@ -1,7 +1,10 @@
-import shapeless._
-import witness.LiteralWitness
+package landscaper
 
-package object eraser {
+import landscaper.witness.LiteralWitness
+import shapeless._
+
+object eraser {
+
   type PartialPredicate = PartialFunction[Any, Boolean]
   type Predicate = (Any => Boolean)
 

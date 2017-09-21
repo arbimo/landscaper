@@ -1,10 +1,12 @@
+package landscaper
+
+import landscaper.witness.LiteralWitness
 import shapeless._
-import witness.LiteralWitness
 
 import scala.collection.generic.CanBuildFrom
 import scala.reflect.ClassTag
 
-package object rewrite {
+object transformations {
 
   /**
     * Represents a transformation of some type In by a function f: FIn => FOut

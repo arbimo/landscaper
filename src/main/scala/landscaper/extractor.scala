@@ -1,9 +1,11 @@
-import org.scalatest.FunSuite
-import witness.IterableWitness
+package landscaper
 
-package object extraction {
+import landscaper.witness.IterableWitness
+import shapeless._
 
-  import shapeless._
+object extractor {
+
+
 
   trait PatternFinder[In] {
     type Pattern

@@ -1,8 +1,9 @@
+package landscaper
+
+import landscaper.eraser._
 import org.scalatest.FunSuite
 
 class EraserTest extends FunSuite {
-
-  import eraser._
   type x = Int =:= String
 
   val aPred: Predicate = predicate { case x: String => x.startsWith("A") }

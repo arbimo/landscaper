@@ -1,14 +1,16 @@
+package landscaper
+
 import org.scalatest.FunSuite
+import extractor._
 
 class ExtractorTest extends FunSuite {
-  import extraction._
 
   val strings = pattern { case x: String => Seq(x) }
   val ints = pattern { case x: Int       => Seq(x) }
   val all = pattern { case x: Any        => Seq(x) }
 
   test("singleton literal extraction") {
-    import syntax._
+    import extractor.syntax._
     assert("A".extract(strings) == Seq("A"))
     assert(1.extract(strings) == Seq())
     assert(1.extract(ints) == Seq(1))

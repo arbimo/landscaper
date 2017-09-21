@@ -1,8 +1,8 @@
-import shapeless.HNil
+package landscaper
 
 import shapeless._
 
-package object witness {
+object witness {
 
   trait LiteralWitness[T]
   object LiteralWitness {

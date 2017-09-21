@@ -1,8 +1,10 @@
+package landscaper
+
 import org.scalatest.FunSuite
+import shapeless._
+import transformations._
 
 class RewriteTest extends FunSuite {
-  import shapeless._
-  import rewrite._
 
   val intToString = (x: Int) => x.toString
   val toLowerCase: String => String = (x: String) => x.toLowerCase
