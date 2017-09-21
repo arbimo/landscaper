@@ -81,6 +81,13 @@ class RewriteTest extends FunSuite {
     check(rewrite(f, A(B("A"), B("B"))), A(C(1, "A"), C(1, "B")))
   }
 
+  test("collections") {
+    check(rewrite(toLowerCase, Vector("A")), Vector("a"))
+    check(rewrite(intToString, Vector(1, 2)), Vector("1", "2"))
+    assertCompiles("val x: Vector[String] = rewrite(intToString, Vector(1))")
+    assertDoesNotCompile("val x: Set[Int] = rewrite(intToString, Set(1))")
+  }
+
 //  test("recursive ADT") {
 //    sealed trait Tree
 //    case class Branch(left: Leaves, right: Tree) extends Tree

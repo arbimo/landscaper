@@ -1,6 +1,8 @@
 import shapeless._
 import witness.LiteralWitness
 
+import scala.collection.generic.CanBuildFrom
+
 package object rewrite {
 
   sealed trait Func[FIn, FOut, In] {
@@ -77,6 +79,21 @@ package object rewrite {
         override def rewrite(f: (In) => Out, in: T): T = in match {
           case x: In => f(x)
           case x: T  => x
+        }
+      }
+
+    implicit def collRewrite[FIn, FOut, InCol, Repr[_], OutCol, That](
+        implicit fInner: Func.Aux[FIn, FOut, InCol, OutCol],
+        bf: CanBuildFrom[Repr[InCol], OutCol, That],
+        ev: Repr[InCol] <:< scala.collection.generic.FilterMonadic[InCol, Repr[InCol]],
+        ev2: That =:= Repr[OutCol]):
+      Func.Aux[FIn,FOut,Repr[InCol],That] =
+      new Func[FIn,FOut,Repr[InCol]] {
+        override type Result = That
+
+        override def rewrite(f: (FIn) => FOut, in: Repr[InCol]): That = {
+          val f2: InCol => OutCol = (x: InCol) => fInner.rewrite(f, x)
+          in.map(f2)(bf)
         }
       }
   }
