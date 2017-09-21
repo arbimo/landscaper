@@ -16,10 +16,10 @@ package object rewrite {
   trait LowPriority extends ExtraLowPriority {
 
     implicit def hListFunc[FIn, FOut, H, T <: HList, TRes1, TRes2 <: HList](
-                                                                             implicit hf: Lazy[Func[FIn, FOut, H]],
-                                                                             tf: Func.Aux[FIn, FOut, T, TRes1],
-                                                                             ev: TRes1 =:= TRes2
-                                                                           ): Func.Aux[FIn, FOut, H :: T, hf.value.Result :: TRes2] =
+        implicit hf: Lazy[Func[FIn, FOut, H]],
+        tf: Func.Aux[FIn, FOut, T, TRes1],
+        ev: TRes1 =:= TRes2
+    ): Func.Aux[FIn, FOut, H :: T, hf.value.Result :: TRes2] =
       new Func[FIn, FOut, H :: T] {
         type Result = hf.value.Result :: TRes2
 
@@ -31,15 +31,16 @@ package object rewrite {
             .asInstanceOf[TRes2]).asInstanceOf[hf.value.Result :: TRes2]
       }
 
-    implicit def coprodFunc[FIn,                           FOut,
-    H,
-    T <: Coproduct,
-    TRes1,
-    TRes2 <: Coproduct](
-                         implicit hf: Lazy[Func[FIn, FOut, H]],
-                         tf: Func.Aux[FIn, FOut, T, TRes1],
-                         ev: TRes1 =:= TRes2
-                       ): Func.Aux[FIn, FOut, H :+: T, hf.value.Result :+: TRes2] =
+    implicit def coprodFunc[FIn,
+                            FOut,
+                            H,
+                            T <: Coproduct,
+                            TRes1,
+                            TRes2 <: Coproduct](
+        implicit hf: Lazy[Func[FIn, FOut, H]],
+        tf: Func.Aux[FIn, FOut, T, TRes1],
+        ev: TRes1 =:= TRes2
+    ): Func.Aux[FIn, FOut, H :+: T, hf.value.Result :+: TRes2] =
       new Func[FIn, FOut, H :+: T] {
         type Result = hf.value.Result :+: TRes2
 
@@ -47,34 +48,35 @@ package object rewrite {
         override def rewrite(f: (FIn) => FOut,
                              in: H :+: T): hf.value.Result :+: TRes2 =
           in match {
-            case Inl(x) => Inl(hf.value.rewrite(f, x).asInstanceOf[hf.value.Result])
+            case Inl(x) =>
+              Inl(hf.value.rewrite(f, x).asInstanceOf[hf.value.Result])
             case Inr(x) => Inr(tf.rewrite(f, x).asInstanceOf[TRes2])
           }
       }
 
     implicit def genFunc[FIn, FOut, In, ReprBeforeTrans, ReprAfterTrans](
-                                                                          implicit gen: Lazy[Generic.Aux[In, ReprBeforeTrans]],
-                                                                          rFunc: Func.Aux[FIn, FOut, ReprBeforeTrans, ReprAfterTrans],
-                                                                          ev: ReprBeforeTrans =:= ReprAfterTrans
-                                                                        ): Func.Aux[FIn, FOut, In, In] =
+        implicit gen: Lazy[Generic.Aux[In, ReprBeforeTrans]],
+        rFunc: Func.Aux[FIn, FOut, ReprBeforeTrans, ReprAfterTrans],
+        ev: ReprBeforeTrans =:= ReprAfterTrans
+    ): Func.Aux[FIn, FOut, In, In] =
       new Func[FIn, FOut, In] {
         override type Result = In
 
         override def rewrite(f: (FIn) => FOut, in: In): In =
-          gen.value.from(rFunc.rewrite(f, gen.value.to(in)).asInstanceOf[ReprBeforeTrans])
+          gen.value.from(
+            rFunc.rewrite(f, gen.value.to(in)).asInstanceOf[ReprBeforeTrans])
       }
 
-
     implicit def superTypeParam[In, Out, T](
-                                             implicit ev: In <:< T,
-                                             ev2: Out <:< T
-                                           ): Func.Aux[In, Out, T, T] =
+        implicit ev: In <:< T,
+        ev2: Out <:< T
+    ): Func.Aux[In, Out, T, T] =
       new Func[In, Out, T] {
         override type Result = T
 
         override def rewrite(f: (In) => Out, in: T): T = in match {
           case x: In => f(x)
-          case x: T => x
+          case x: T  => x
         }
       }
   }
@@ -87,8 +89,8 @@ package object rewrite {
     def apply[FIn, FOut, In](
         implicit ev: Func[FIn, FOut, In]): Aux[FIn, FOut, In, ev.Result] = ev
 
-    implicit def param[In, Out]: Func.Aux[In, Out, In, Out] = new ParamFunc[In, Out]
-
+    implicit def param[In, Out]: Func.Aux[In, Out, In, Out] =
+      new ParamFunc[In, Out]
 
   }
 
