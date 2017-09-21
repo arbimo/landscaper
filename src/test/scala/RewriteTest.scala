@@ -76,8 +76,31 @@ class RewriteTest extends FunSuite {
       rewrite(toLowerCase, A(B("AA"), C(1, "BB"))),
       A(B("aa"), C(1, "bb"))
     )
+
+    sealed trait Tree
+    case class Branch(left: Leaves, right: Tree) extends Tree
+    sealed trait Leaves extends Tree
+    case class Leaf(s: String) extends Leaves
+    case class LeafInt(i: Int) extends Leaves
+    assertCompiles("Generic[Tree]")
+    assertCompiles("Func[String,String, CNil]")
+    assertCompiles("Func[String,String, Leaf :+: CNil]")
+    assertCompiles("Func[String,String, LeafInt :+: Leaf :+: CNil]")
+    assertCompiles("Func[String,String, Leaves]")
+    assertCompiles("Func[String,String, Branch]")
+    assertCompiles("Func[String,String, Tree]")
+//    val tree = Branch(Leaf("A"), Branch(Leaf("B"), Leaf("C")))
+//    println(Func[String,String,Tree])
+//    check(
+//      rewrite(toLowerCase, Leaf("A"): Tree),
+//      Leaf("a")
+//    )
+//    check(
+//      rewrite(toLowerCase, tree),
+//      Branch(Leaf("a"), Branch(Leaf("b"), Leaf("c")))
+//    )
   }
-  Tuple2
+
 
   test("typing") {
     assertCompiles(

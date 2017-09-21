@@ -9,13 +9,17 @@ package object rewrite {
   }
 
   trait LowPriority {
-    implicit def identity[FIn, FOut, In : LiteralWitness]: Func.Aux[FIn, FOut, In, In] =
+    implicit def identity[FIn, FOut, In: LiteralWitness]
+      : Func.Aux[FIn, FOut, In, In] =
       new DefaultFunc[FIn, FOut, In]
   }
   object Func extends LowPriority {
-    type Aux[FIn, FOut, In, Result0] = Func[FIn, FOut, In] { type Result = Result0 }
+    type Aux[FIn, FOut, In, Result0] = Func[FIn, FOut, In] {
+      type Result = Result0
+    }
 
-    def apply[FIn, FOut, In](implicit ev: Func[FIn, FOut, In]): Aux[FIn,FOut,In,ev.Result] = ev
+    def apply[FIn, FOut, In](
+        implicit ev: Func[FIn, FOut, In]): Aux[FIn, FOut, In, ev.Result] = ev
 
     implicit def param[In, Out]: Aux[In, Out, In, Out] = new ParamFunc[In, Out]
 
@@ -30,23 +34,44 @@ package object rewrite {
         // FIXME: we shouldn't have to tell the compiler the types it is handling (perhaps this is due to the =:= constraint
         override def rewrite(f: (FIn) => FOut,
                              in: H :: T): hf.value.Result :: TRes2 =
-
-          (hf.value.rewrite(f, in.head) :: tf.rewrite(f, in.tail).asInstanceOf[TRes2]).asInstanceOf[hf.value.Result :: TRes2]
+          (hf.value.rewrite(f, in.head) :: tf
+            .rewrite(f, in.tail)
+            .asInstanceOf[TRes2]).asInstanceOf[hf.value.Result :: TRes2]
       }
 
-    implicit def genFunc[FIn,FOut, In, ReprBeforeTrans, ReprAfterTrans](
-                                      implicit gen: Generic.Aux[In,ReprBeforeTrans],
-                                      rFunc: Func.Aux[FIn, FOut, ReprBeforeTrans, ReprAfterTrans],
-                                      ev: ReprBeforeTrans =:= ReprAfterTrans
-                                      ): Func.Aux[FIn, FOut, In, In] =
+    implicit def coprodFunc[FIn,                           FOut,
+                            H,
+                            T <: Coproduct,
+                            TRes1,
+                            TRes2 <: Coproduct](
+        implicit hf: Lazy[Func[FIn, FOut, H]],
+        tf: Func.Aux[FIn, FOut, T, TRes1],
+        ev: TRes1 =:= TRes2
+    ): Func.Aux[FIn, FOut, H :+: T, hf.value.Result :+: TRes2] =
+      new Func[FIn, FOut, H :+: T] {
+        type Result = hf.value.Result :+: TRes2
+
+        // FIXME: we shouldn't have to tell the compiler the types it is handling (perhaps this is due to the =:= constraint
+        override def rewrite(f: (FIn) => FOut,
+                             in: H :+: T): hf.value.Result :+: TRes2 =
+          in match {
+            case Inl(x) => Inl(hf.value.rewrite(f, x).asInstanceOf[hf.value.Result])
+            case Inr(x) => Inr(tf.rewrite(f, x).asInstanceOf[TRes2])
+          }
+      }
+
+    implicit def genFunc[FIn, FOut, In, ReprBeforeTrans, ReprAfterTrans](
+        implicit gen: Lazy[Generic.Aux[In, ReprBeforeTrans]],
+        rFunc: Func.Aux[FIn, FOut, ReprBeforeTrans, ReprAfterTrans],
+        ev: ReprBeforeTrans =:= ReprAfterTrans
+    ): Func.Aux[FIn, FOut, In, In] =
       new Func[FIn, FOut, In] {
         override type Result = In
 
         override def rewrite(f: (FIn) => FOut, in: In): In =
-          gen.from(rFunc.rewrite(f, gen.to(in)).asInstanceOf[ReprBeforeTrans])
+          gen.value.from(rFunc.rewrite(f, gen.value.to(in)).asInstanceOf[ReprBeforeTrans])
       }
   }
-
 
   final class DefaultFunc[FIn, FOut, In] extends Func[FIn, FOut, In] {
     type Result = In
