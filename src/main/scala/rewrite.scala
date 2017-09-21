@@ -6,27 +6,37 @@ import scala.reflect.ClassTag
 
 package object rewrite {
 
-  sealed trait Func[FIn, FOut, In] {
+  /**
+    * Represents a transformation of some type In by a function f: FIn => FOut
+    * @tparam FIn Input type of the function
+    * @tparam FOut Output type of the function
+    * @tparam In Type on which to apply the transformation.
+    */
+  sealed trait Trans[FIn, FOut, In] {
     type Result
     def rewrite(f: FIn => FOut, in: In): Result
   }
 
-  trait ExtraLowPriority {
-    implicit def identity[FIn, FOut, In: LiteralWitness]
-      : Func.Aux[FIn, FOut, In, In] =
-      new DefaultFunc[FIn, FOut, In]
-  }
-  trait LowPriority extends ExtraLowPriority {
+  trait LowPriority {
+    /** Low priority transformations that are always superseded by the direct transformation when applicable. */
 
-    implicit def hListFunc[FIn, FOut, H, T <: HList, TRes1, TRes2 <: HList](
-        implicit hf: Lazy[Func[FIn, FOut, H]],
-        tf: Func.Aux[FIn, FOut, T, TRes1],
-        ev: TRes1 =:= TRes2
-    ): Func.Aux[FIn, FOut, H :: T, hf.value.Result :: TRes2] =
-      new Func[FIn, FOut, H :: T] {
+    /** Identity transformation for literal types (including HNil and CNil) */
+    implicit def identity[FIn, FOut, In: LiteralWitness]
+      : Trans.Aux[FIn, FOut, In, In] =
+      new Trans[FIn, FOut, In] {
+        type Result = In
+        override def rewrite(f: (FIn) => FOut, in: In): In = in
+      }
+
+    /** Transformation for HLists */
+    implicit def hListTrans[FIn, FOut, H, T <: HList, TRes1, TRes2 <: HList](
+                                                                             implicit hf: Lazy[Trans[FIn, FOut, H]],
+                                                                             tf: Trans.Aux[FIn, FOut, T, TRes1],
+                                                                             ev: TRes1 =:= TRes2
+    ): Trans.Aux[FIn, FOut, H :: T, hf.value.Result :: TRes2] =
+      new Trans[FIn, FOut, H :: T] {
         type Result = hf.value.Result :: TRes2
 
-        // FIXME: we shouldn't have to tell the compiler the types it is handling (perhaps this is due to the =:= constraint
         override def rewrite(f: (FIn) => FOut,
                              in: H :: T): hf.value.Result :: TRes2 =
           (hf.value.rewrite(f, in.head) :: tf
@@ -34,20 +44,20 @@ package object rewrite {
             .asInstanceOf[TRes2]).asInstanceOf[hf.value.Result :: TRes2]
       }
 
-    implicit def coprodFunc[FIn,
+    /** Transformation for Coproduct types. */
+    implicit def coprodTrans[FIn,
                             FOut,
                             H,
                             T <: Coproduct,
                             TRes1,
                             TRes2 <: Coproduct](
-        implicit hf: Lazy[Func[FIn, FOut, H]],
-        tf: Func.Aux[FIn, FOut, T, TRes1],
-        ev: TRes1 =:= TRes2
-    ): Func.Aux[FIn, FOut, H :+: T, hf.value.Result :+: TRes2] =
-      new Func[FIn, FOut, H :+: T] {
+                                                 implicit hf: Lazy[Trans[FIn, FOut, H]],
+                                                 tf: Trans.Aux[FIn, FOut, T, TRes1],
+                                                 ev: TRes1 =:= TRes2
+    ): Trans.Aux[FIn, FOut, H :+: T, hf.value.Result :+: TRes2] =
+      new Trans[FIn, FOut, H :+: T] {
         type Result = hf.value.Result :+: TRes2
 
-        // FIXME: we shouldn't have to tell the compiler the types it is handling (perhaps this is due to the =:= constraint
         override def rewrite(f: (FIn) => FOut,
                              in: H :+: T): hf.value.Result :+: TRes2 =
           in match {
@@ -57,12 +67,15 @@ package object rewrite {
           }
       }
 
-    implicit def genFunc[FIn, FOut, In, ReprBeforeTrans, ReprAfterTrans](
-        implicit gen: Lazy[Generic.Aux[In, ReprBeforeTrans]],
-        rFunc: Func.Aux[FIn, FOut, ReprBeforeTrans, ReprAfterTrans],
-        ev: ReprBeforeTrans =:= ReprAfterTrans
-    ): Func.Aux[FIn, FOut, In, In] =
-      new Func[FIn, FOut, In] {
+    /** Transformation for sealed trait and case classes.
+      * It relies on the shapeless to find their generic representation.
+      * This also works for tuples as long as their type does not change. */
+    implicit def genTrans[FIn, FOut, In, ReprBeforeTrans, ReprAfterTrans](
+                                                                          implicit gen: Lazy[Generic.Aux[In, ReprBeforeTrans]],
+                                                                          rFunc: Trans.Aux[FIn, FOut, ReprBeforeTrans, ReprAfterTrans],
+                                                                          ev: ReprBeforeTrans =:= ReprAfterTrans
+    ): Trans.Aux[FIn, FOut, In, In] =
+      new Trans[FIn, FOut, In] {
         override type Result = In
 
         override def rewrite(f: (FIn) => FOut, in: In): In =
@@ -70,27 +83,30 @@ package object rewrite {
             rFunc.rewrite(f, gen.value.to(in)).asInstanceOf[ReprBeforeTrans])
       }
 
-    implicit def superTypeParam[In : ClassTag, Out, T](
+    /** given f: A => B, provide a transformation T => T if T is a super type of A and B.
+      * This is uses runtime reflection to distinguish instances of A */
+    implicit def superTypeDirectTrans[In: ClassTag, Out, T](
         implicit ev: In <:< T,
         ev2: Out <:< T
-    ): Func.Aux[In, Out, T, T] =
-      new Func[In, Out, T] {
+    ): Trans.Aux[In, Out, T, T] =
+      new Trans[In, Out, T] {
         val clazz = implicitly[ClassTag[In]].runtimeClass
         override type Result = T
 
         override def rewrite(f: (In) => Out, in: T): T = in match {
           case x: In if clazz.isInstance(x) => f(x)
-          case x: T  => x
+          case x                         => x
         }
       }
 
+    /** Provide transformation for scala collection types. */
     implicit def collRewrite[FIn, FOut, InCol, Repr[_], OutCol, That](
-        implicit fInner: Func.Aux[FIn, FOut, InCol, OutCol],
-        bf: CanBuildFrom[Repr[InCol], OutCol, That],
-        ev: Repr[InCol] <:< scala.collection.generic.FilterMonadic[InCol, Repr[InCol]],
-        ev2: That =:= Repr[OutCol]):
-      Func.Aux[FIn,FOut,Repr[InCol],That] =
-      new Func[FIn,FOut,Repr[InCol]] {
+                                                                       implicit fInner: Trans.Aux[FIn, FOut, InCol, OutCol],
+                                                                       bf: CanBuildFrom[Repr[InCol], OutCol, That],
+                                                                       ev: Repr[InCol] <:< scala.collection.generic.FilterMonadic[InCol,
+                                                                   Repr[InCol]],
+                                                                       ev2: That =:= Repr[OutCol]): Trans.Aux[FIn, FOut, Repr[InCol], That] =
+      new Trans[FIn, FOut, Repr[InCol]] {
         override type Result = That
 
         override def rewrite(f: (FIn) => FOut, in: Repr[InCol]): That = {
@@ -100,30 +116,33 @@ package object rewrite {
       }
   }
 
-  object Func extends LowPriority {
-    type Aux[FIn, FOut, In, Result0] = Func[FIn, FOut, In] {
+  object Trans extends LowPriority {
+    type Aux[FIn, FOut, In, Result0] = Trans[FIn, FOut, In] {
       type Result = Result0
     }
 
+    /** Implicitly finds a transformation of "In" by a function "f: FIn => FOut" */
     def apply[FIn, FOut, In](
-        implicit ev: Func[FIn, FOut, In]): Aux[FIn, FOut, In, ev.Result] = ev
+        implicit ev: Trans[FIn, FOut, In]): Aux[FIn, FOut, In, ev.Result] = ev
 
-    implicit def param[In, Out]: Func.Aux[In, Out, In, Out] =
-      new ParamFunc[In, Out]
+    /** Highest priority case: given a function, f: A => B, transform an instance of A into a B. */
+    implicit def directTransformation[In, Out]: Trans.Aux[In, Out, In, Out] =
+      new Trans[In, Out, In] {
+        type Result = Out
+        override def rewrite(f: (In) => Out, in: In): Out = f(in)
+      }
 
   }
 
-  final class DefaultFunc[FIn, FOut, In] extends Func[FIn, FOut, In] {
-    type Result = In
-    override def rewrite(f: (FIn) => FOut, in: In): In = in
-  }
-  final class ParamFunc[In, Out] extends Func[In, Out, In] {
-    type Result = Out
-    override def rewrite(f: (In) => Out, in: In): Out = f(in)
-  }
-
-  def rewrite[FIn, FOut, In](f: FIn => FOut, value: In)(
-      implicit func: Func[FIn, FOut, In]): func.Result =
-    func.rewrite(f, value)
+  /** Transforms a data structure "d" using a function that is applied on all constituent of "d"
+    *
+    * @param f Function to apply recursively on the data structure.
+    * @param d Data structure to transform.
+    * @param func implicit representation of the transformation at the type level.
+    * @return
+    */
+  def rewrite[FIn, FOut, In](f: FIn => FOut, d: In)(
+      implicit func: Trans[FIn, FOut, In]): func.Result =
+    func.rewrite(f, d)
 
 }

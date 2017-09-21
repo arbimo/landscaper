@@ -65,8 +65,8 @@ class RewriteTest extends FunSuite {
     case class A(left: AB, right: AB)
     case class B(s: String) extends AB
     case class C(i: Int, s: String) extends AB
-    assertCompiles("Func[String,String,C]")
-    assertDoesNotCompile("Func[Int, String, C]")
+    assertCompiles("Trans[String,String,C]")
+    assertDoesNotCompile("Trans[Int, String, C]")
 
     check(
       rewrite(toLowerCase, C(1, "A")),
@@ -96,14 +96,14 @@ class RewriteTest extends FunSuite {
 //    case class Leaf(s: String) extends Leaves
 //    case class LeafInt(i: Int) extends Leaves
 //    assertCompiles("Generic[Tree]")
-//    assertCompiles("Func[String,String, CNil]")
-//    assertCompiles("Func[String,String, Leaf :+: CNil]")
-//    assertCompiles("Func[String,String, LeafInt :+: Leaf :+: CNil]")
-//    assertCompiles("Func[String,String, Leaves]")
-//    assertCompiles("Func[String,String, Branch]")
-//    assertCompiles("Func[String,String, Tree]")
+//    assertCompiles("Trans[String,String, CNil]")
+//    assertCompiles("Trans[String,String, Leaf :+: CNil]")
+//    assertCompiles("Trans[String,String, LeafInt :+: Leaf :+: CNil]")
+//    assertCompiles("Trans[String,String, Leaves]")
+//    assertCompiles("Trans[String,String, Branch]")
+//    assertCompiles("Trans[String,String, Tree]")
 //    val tree = Branch(Leaf("A"), Branch(Leaf("B"), Leaf("C")))
-//    println(Func[String,String,Tree])
+//    println(Trans[String,String,Tree])
 //    check(
 //      rewrite(toLowerCase, Leaf("A"): Tree),
 //      Leaf("a")
