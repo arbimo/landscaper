@@ -79,6 +79,7 @@ class RewriteTest extends FunSuite {
     val f = (b: B) => C(1, b.s)
     check(rewrite(f, B("A"): AB), C(1, "A"))
     check(rewrite(f, A(B("A"), B("B"))), A(C(1, "A"), C(1, "B")))
+    check(rewrite(f, A(C(1, "A"), B("B"))), A(C(1, "A"), C(1, "B")))
   }
 
   test("collections") {

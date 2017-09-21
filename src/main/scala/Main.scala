@@ -15,7 +15,6 @@ object Main extends App {
   val genericSNode = Generic[SNode].to(n)
 
   println(genericSNode)
-  genericSNode
 
 
 }

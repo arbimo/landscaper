@@ -2,6 +2,7 @@ import shapeless._
 import witness.LiteralWitness
 
 import scala.collection.generic.CanBuildFrom
+import scala.reflect.ClassTag
 
 package object rewrite {
 
@@ -69,15 +70,16 @@ package object rewrite {
             rFunc.rewrite(f, gen.value.to(in)).asInstanceOf[ReprBeforeTrans])
       }
 
-    implicit def superTypeParam[In, Out, T](
+    implicit def superTypeParam[In : ClassTag, Out, T](
         implicit ev: In <:< T,
         ev2: Out <:< T
     ): Func.Aux[In, Out, T, T] =
       new Func[In, Out, T] {
+        val clazz = implicitly[ClassTag[In]].runtimeClass
         override type Result = T
 
         override def rewrite(f: (In) => Out, in: T): T = in match {
-          case x: In => f(x)
+          case x: In if clazz.isInstance(x) => f(x)
           case x: T  => x
         }
       }
