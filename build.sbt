@@ -1,10 +1,17 @@
-name := "tree-rewrite"
+name := "landscaper"
 
-version := "1.0"
+organization := "com.github.arthur-bit-monnot"
 
-scalaVersion := "2.12.1"
+version := "0.1-SNAPSHOT"
+
+scalaVersion := "2.12.3"
+
+scalacOptions ++= Seq(
+  "-feature",
+  "-language:higherKinds"
+)
 
 libraryDependencies ++= Seq(
   "com.chuusai" %% "shapeless" % "2.3.2",
-  "org.scalatest" %% "scalatest" % "3.0.1"
+  "org.scalatest" %% "scalatest" % "3.0.1" % "test"
 )
