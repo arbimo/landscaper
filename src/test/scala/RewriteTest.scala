@@ -55,16 +55,16 @@ class RewriteTest extends FunSuite {
       rewrite(toLowerCase, rewrite(intToString, "A" :: 1 :: HNil)),
       "a" :: "1" :: HNil
     )
-    assertResult(
-      "1" :: "a" :: HNil)(
+    assertResult("1" :: "a" :: HNil)(
       rewrite(toLowerCase, rewrite(intToString, 1 :: "A" :: HNil))
     )
   }
 
   test("case-class") {
-    case class A(b: B, c: C)
-    case class B(s: String)
-    case class C(i: Int, s: String)
+    sealed trait AB
+    case class A(left: AB, right: AB)
+    case class B(s: String) extends AB
+    case class C(i: Int, s: String) extends AB
     assertCompiles("Func[String,String,C]")
     assertDoesNotCompile("Func[Int, String, C]")
 
@@ -76,19 +76,24 @@ class RewriteTest extends FunSuite {
       rewrite(toLowerCase, A(B("AA"), C(1, "BB"))),
       A(B("aa"), C(1, "bb"))
     )
+    val f = (b: B) => C(1, b.s)
+    check(rewrite(f, B("A"): AB), C(1, "A"))
+    check(rewrite(f, A(B("A"), B("B"))), A(C(1, "A"), C(1, "B")))
+  }
 
-    sealed trait Tree
-    case class Branch(left: Leaves, right: Tree) extends Tree
-    sealed trait Leaves extends Tree
-    case class Leaf(s: String) extends Leaves
-    case class LeafInt(i: Int) extends Leaves
-    assertCompiles("Generic[Tree]")
-    assertCompiles("Func[String,String, CNil]")
-    assertCompiles("Func[String,String, Leaf :+: CNil]")
-    assertCompiles("Func[String,String, LeafInt :+: Leaf :+: CNil]")
-    assertCompiles("Func[String,String, Leaves]")
-    assertCompiles("Func[String,String, Branch]")
-    assertCompiles("Func[String,String, Tree]")
+//  test("recursive ADT") {
+//    sealed trait Tree
+//    case class Branch(left: Leaves, right: Tree) extends Tree
+//    sealed trait Leaves extends Tree
+//    case class Leaf(s: String) extends Leaves
+//    case class LeafInt(i: Int) extends Leaves
+//    assertCompiles("Generic[Tree]")
+//    assertCompiles("Func[String,String, CNil]")
+//    assertCompiles("Func[String,String, Leaf :+: CNil]")
+//    assertCompiles("Func[String,String, LeafInt :+: Leaf :+: CNil]")
+//    assertCompiles("Func[String,String, Leaves]")
+//    assertCompiles("Func[String,String, Branch]")
+//    assertCompiles("Func[String,String, Tree]")
 //    val tree = Branch(Leaf("A"), Branch(Leaf("B"), Leaf("C")))
 //    println(Func[String,String,Tree])
 //    check(
@@ -99,8 +104,7 @@ class RewriteTest extends FunSuite {
 //      rewrite(toLowerCase, tree),
 //      Branch(Leaf("a"), Branch(Leaf("b"), Leaf("c")))
 //    )
-  }
-
+//  }
 
   test("typing") {
     assertCompiles(
