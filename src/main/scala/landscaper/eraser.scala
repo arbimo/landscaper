@@ -3,6 +3,9 @@ package landscaper
 import landscaper.witness.LiteralWitness
 import shapeless._
 
+import scala.collection.GenTraversableLike
+import scala.collection.generic.CanBuildFrom
+
 object eraser {
 
   type PartialPredicate = PartialFunction[Any, Boolean]
@@ -29,13 +32,6 @@ object eraser {
       override def erase(pred: (Any) => Boolean)(t: T): T = t
     }
 
-    implicit def seqEraser[Content, T <: Seq[Content]](
-        implicit er: Eraser[Content]): Eraser[Seq[Content]] =
-      instance[Seq[Content]](
-        (pred: Predicate, t: Seq[Content]) =>
-          t.map(er.erase(pred))
-            .filterNot(pred))
-
     implicit def genEraser[T, R](
         implicit gen: Generic.Aux[T, R],
         rEr: Lazy[Eraser[R]]
@@ -50,15 +46,26 @@ object eraser {
       instance[H :: T]((p: Predicate, l: H :: T) =>
         hEr.value.erase(p)(l.head) :: tEr.erase(p)(l.tail))
 
-    implicit def coprodEraser[H, T <:Coproduct](
-                                               implicit hEr: Lazy[Eraser[H]],
-                                               tEr: Eraser[T]
-                                               ): Eraser[H :+: T] = instance((p: Predicate, c: H :+: T) =>
-      c match {
-        case Inl(x) => Inl(hEr.value.erase(p)(x))
-        case Inr(x) => Inr(tEr.erase(p)(x))
-      }
-    )
+    implicit def coprodEraser[H, T <: Coproduct](
+        implicit hEr: Lazy[Eraser[H]],
+        tEr: Eraser[T]
+    ): Eraser[H :+: T] =
+      Eraser.instance((p: Predicate, c: H :+: T) =>
+        c match {
+          case Inl(x) => Inl(hEr.value.erase(p)(x))
+          case Inr(x) => Inr(tEr.erase(p)(x))
+      })
+
+    implicit def collEraser[
+        Content,
+        Repr[Content] <: GenTraversableLike[Content, Repr[Content]],
+        That](
+        implicit er: Lazy[Eraser[Content]],
+        ev: CanBuildFrom[Repr[Content], Content, That],
+        ev2: That =:= Repr[Content]
+    ): Eraser[Repr[Content]] =
+      Eraser.instance[Repr[Content]]((pred: Predicate, t: Repr[Content]) =>
+        t.map(er.value.erase(pred)).filterNot(pred))
   }
 
 }

@@ -4,7 +4,6 @@ import landscaper.eraser._
 import org.scalatest.FunSuite
 
 class EraserTest extends FunSuite {
-  type x = Int =:= String
 
   val aPred: Predicate = predicate { case x: String => x.startsWith("A") }
 
@@ -20,6 +19,11 @@ class EraserTest extends FunSuite {
 
   test("seq-seq") {
     assert(erase(aPred)(Seq(Seq("A", "B", "AA"))) == Seq(Seq("B")))
+  }
+  test("seq-set") {
+    assert(erase(aPred)(Seq(Set("A", "B", "AA"))) == Seq(Set("B")))
+    assertCompiles("val x: Seq[Set[String]] = erase(aPred)(Seq(Set(\"A\")))")
+    assertDoesNotCompile("val x: Seq[Seq[String]] = erase(aPred)(Seq(Set(\"A\")))")
   }
 
   test("tuple-seq") {
