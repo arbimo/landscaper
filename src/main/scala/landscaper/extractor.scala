@@ -11,7 +11,7 @@ object extractor {
   }
 
   object PatternFinder {
-    type Aux[In, Out] = PatternFinder[In] { type Pattern }
+    type Aux[In, Out] = PatternFinder[In] { type Pattern = Out }
 
     def apply[In, Out](f: In => Seq[Out]): Aux[In, Out] =
       new PatternFinder[In] {

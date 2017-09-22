@@ -45,4 +45,11 @@ class ExtractorTest extends FunSuite {
     )
     assert(extract(strings, tree) == Seq("A", "B", "C", "D"))
   }
+
+  test("typing") {
+    // test mostly consist in having those compile
+    val x: Seq[String] = extract(strings, Nil)
+    val y: Seq[Int] = extract(ints, (1, "a", 2.0))
+    assertDoesNotCompile("val x: Seq[Int] = extract(strings, (1, \"a\", 2.0))")
+  }
 }
