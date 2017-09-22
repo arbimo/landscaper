@@ -20,8 +20,8 @@ object transformations {
   }
 
   trait LowPriority {
-    /** Low priority transformations that are always superseded by the direct transformation when applicable. */
 
+    /** Low priority transformations that are always superseded by the direct transformation when applicable. */
     /** Identity transformation for literal types (including HNil and CNil) */
     implicit def identity[FIn, FOut, In: LiteralWitness]
       : Trans.Aux[FIn, FOut, In, In] =
@@ -32,9 +32,9 @@ object transformations {
 
     /** Transformation for HLists */
     implicit def hListTrans[FIn, FOut, H, T <: HList, TRes1, TRes2 <: HList](
-                                                                             implicit hf: Lazy[Trans[FIn, FOut, H]],
-                                                                             tf: Trans.Aux[FIn, FOut, T, TRes1],
-                                                                             ev: TRes1 =:= TRes2
+        implicit hf: Lazy[Trans[FIn, FOut, H]],
+        tf: Trans.Aux[FIn, FOut, T, TRes1],
+        ev: TRes1 =:= TRes2
     ): Trans.Aux[FIn, FOut, H :: T, hf.value.Result :: TRes2] =
       new Trans[FIn, FOut, H :: T] {
         type Result = hf.value.Result :: TRes2
@@ -48,14 +48,14 @@ object transformations {
 
     /** Transformation for Coproduct types. */
     implicit def coprodTrans[FIn,
-                            FOut,
-                            H,
-                            T <: Coproduct,
-                            TRes1,
-                            TRes2 <: Coproduct](
-                                                 implicit hf: Lazy[Trans[FIn, FOut, H]],
-                                                 tf: Trans.Aux[FIn, FOut, T, TRes1],
-                                                 ev: TRes1 =:= TRes2
+                             FOut,
+                             H,
+                             T <: Coproduct,
+                             TRes1,
+                             TRes2 <: Coproduct](
+        implicit hf: Lazy[Trans[FIn, FOut, H]],
+        tf: Lazy[Trans.Aux[FIn, FOut, T, TRes1]],
+        ev: TRes1 =:= TRes2
     ): Trans.Aux[FIn, FOut, H :+: T, hf.value.Result :+: TRes2] =
       new Trans[FIn, FOut, H :+: T] {
         type Result = hf.value.Result :+: TRes2
@@ -65,24 +65,24 @@ object transformations {
           in match {
             case Inl(x) =>
               Inl(hf.value.rewrite(f, x).asInstanceOf[hf.value.Result])
-            case Inr(x) => Inr(tf.rewrite(f, x).asInstanceOf[TRes2])
+            case Inr(x) => Inr(tf.value.rewrite(f, x).asInstanceOf[TRes2])
           }
       }
 
     /** Transformation for sealed trait and case classes.
       * It relies on the shapeless to find their generic representation.
       * This also works for tuples as long as their type does not change. */
-    implicit def genTrans[FIn, FOut, In, ReprBeforeTrans, ReprAfterTrans](
-                                                                          implicit gen: Lazy[Generic.Aux[In, ReprBeforeTrans]],
-                                                                          rFunc: Trans.Aux[FIn, FOut, ReprBeforeTrans, ReprAfterTrans],
-                                                                          ev: ReprBeforeTrans =:= ReprAfterTrans
+    implicit def genTrans[FIn, FOut, In, Repr](
+        implicit gen: Lazy[Generic.Aux[In, Repr]],
+        rFunc: Lazy[Trans.Aux[FIn, FOut, Repr, Repr]]
     ): Trans.Aux[FIn, FOut, In, In] =
       new Trans[FIn, FOut, In] {
         override type Result = In
 
         override def rewrite(f: (FIn) => FOut, in: In): In =
           gen.value.from(
-            rFunc.rewrite(f, gen.value.to(in)).asInstanceOf[ReprBeforeTrans])
+            rFunc.value
+              .rewrite(f, gen.value.to(in)))
       }
 
     /** given f: A => B, provide a transformation T => T if T is a super type of A and B.
@@ -97,17 +97,17 @@ object transformations {
 
         override def rewrite(f: (In) => Out, in: T): T = in match {
           case x: In if clazz.isInstance(x) => f(x)
-          case x                         => x
+          case x                            => x
         }
       }
 
     /** Provide transformation for scala collection types. */
     implicit def collRewrite[FIn, FOut, InCol, Repr[_], OutCol, That](
-                                                                       implicit fInner: Trans.Aux[FIn, FOut, InCol, OutCol],
-                                                                       bf: CanBuildFrom[Repr[InCol], OutCol, That],
-                                                                       ev: Repr[InCol] <:< scala.collection.generic.FilterMonadic[InCol,
+        implicit fInner: Trans.Aux[FIn, FOut, InCol, OutCol],
+        bf: CanBuildFrom[Repr[InCol], OutCol, That],
+        ev: Repr[InCol] <:< scala.collection.generic.FilterMonadic[InCol,
                                                                    Repr[InCol]],
-                                                                       ev2: That =:= Repr[OutCol]): Trans.Aux[FIn, FOut, Repr[InCol], That] =
+        ev2: That =:= Repr[OutCol]): Trans.Aux[FIn, FOut, Repr[InCol], That] =
       new Trans[FIn, FOut, Repr[InCol]] {
         override type Result = That
 

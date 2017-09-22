@@ -91,30 +91,40 @@ class RewriteTest extends FunSuite {
     assertDoesNotCompile("val x: Set[Int] = rewrite(intToString, Set(1))")
   }
 
-//  test("recursive ADT") {
-//    sealed trait Tree
-//    case class Branch(left: Leaves, right: Tree) extends Tree
-//    sealed trait Leaves extends Tree
-//    case class Leaf(s: String) extends Leaves
-//    case class LeafInt(i: Int) extends Leaves
-//    assertCompiles("Generic[Tree]")
-//    assertCompiles("Trans[String,String, CNil]")
-//    assertCompiles("Trans[String,String, Leaf :+: CNil]")
-//    assertCompiles("Trans[String,String, LeafInt :+: Leaf :+: CNil]")
-//    assertCompiles("Trans[String,String, Leaves]")
-//    assertCompiles("Trans[String,String, Branch]")
-//    assertCompiles("Trans[String,String, Tree]")
-//    val tree = Branch(Leaf("A"), Branch(Leaf("B"), Leaf("C")))
-//    println(Trans[String,String,Tree])
-//    check(
-//      rewrite(toLowerCase, Leaf("A"): Tree),
-//      Leaf("a")
-//    )
-//    check(
-//      rewrite(toLowerCase, tree),
-//      Branch(Leaf("a"), Branch(Leaf("b"), Leaf("c")))
-//    )
-//  }
+  test("recursive") {
+    case class N(opt: Option[N])
+    Trans[Int,Int,Option[Option[String]]]
+    assert(rewrite(toLowerCase, Some(Some("A"))) == Some(Some("a")))
+
+    // FIXME: we should not require explicit type to work
+    assert(rewrite((x: Option[String]) => (None: Option[String]), Some(Some("A"): Option[String])) == Some(None))
+    Trans[Int,Int,N]
+  }
+
+  test("recursive ADT") {
+    sealed trait Tree
+    case class Branch(left: Leaves, right: Tree) extends Tree
+    sealed trait Leaves extends Tree
+    case class Leaf(s: String) extends Leaves
+    case class LeafInt(i: Int) extends Leaves
+    assertCompiles("Generic[Tree]")
+    assertCompiles("Trans[String,String, CNil]")
+    assertCompiles("Trans[String,String, Leaf :+: CNil]")
+    assertCompiles("Trans[String,String, LeafInt :+: Leaf :+: CNil]")
+    assertCompiles("Trans[String,String, Leaves]")
+    assertCompiles("Trans[String,String, Branch]")
+    assertCompiles("Trans[String,String, Tree]")
+    val tree = Branch(Leaf("A"), Branch(Leaf("B"), Leaf("C")))
+    println(Trans[String,String,Tree])
+    check(
+      rewrite(toLowerCase, Leaf("A"): Tree),
+      Leaf("a")
+    )
+    check(
+      rewrite(toLowerCase, tree),
+      Branch(Leaf("a"), Branch(Leaf("b"), Leaf("c")))
+    )
+  }
 
   test("typing") {
     assertCompiles(
