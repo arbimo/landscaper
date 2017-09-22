@@ -20,10 +20,9 @@ object transformations {
   }
 
   trait LowPriority {
-
     /** Low priority transformations that are always superseded by the direct transformation when applicable. */
     /** Identity transformation for literal types (including HNil and CNil) */
-    implicit def identity[FIn, FOut, In: LiteralWitness]
+    implicit def identity[FIn, FOut, In: LiteralWitness](implicit ev: FIn =:!= In)
       : Trans.Aux[FIn, FOut, In, In] =
       new Trans[FIn, FOut, In] {
         type Result = In

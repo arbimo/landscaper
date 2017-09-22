@@ -68,7 +68,6 @@ class RewriteTest extends FunSuite {
     case class B(s: String) extends AB
     case class C(i: Int, s: String) extends AB
     assertCompiles("Trans[String,String,C]")
-    println(rewrite(intToString, C(1, "a")))
     assertDoesNotCompile("Trans[Int, String, C]")
 
     check(
