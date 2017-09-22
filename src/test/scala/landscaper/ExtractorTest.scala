@@ -1,55 +1,58 @@
 package landscaper
 
-import org.scalatest.FunSuite
-import extractor._
+import utest.CompileError.Type
+import utest._
 
-class ExtractorTest extends FunSuite {
+object ExtractorTest extends TestSuite {
 
   val strings = pattern { case x: String => Seq(x) }
   val ints = pattern { case x: Int       => Seq(x) }
   val all = pattern { case x: Any        => Seq(x) }
 
-  test("singleton literal extraction") {
-    import extractor.syntax._
-    assert("A".extract(strings) == Seq("A"))
-    assert(1.extract(strings) == Seq())
-    assert(1.extract(ints) == Seq(1))
-  }
+  val tests = Tests {
 
-  test("ADT extraction") {
-    sealed trait Node
-    case class Named(name: String, node: Literal) extends Node
-    case class Literal(content: String) extends Node
+    "singleton literal extraction" - {
+      import extractor.syntax._
+      assert("A".extract(strings) == Seq("A"))
+      assert(1.extract(strings) == Seq())
+      assert(1.extract(ints) == Seq(1))
+    }
 
-    val lit = pattern { case x: Literal => Seq(x) }
-    val named = pattern { case x: Named => Seq(x) }
+    "ADT extraction" - {
+      sealed trait Node
+      case class Named(name: String, node: Literal) extends Node
+      case class Literal(content: String) extends Node
 
-    val data: Seq[Node] =
-      Seq(Literal("X"), Named("first", Literal("X")), Literal("Y"))
+      val lit = pattern { case x: Literal => Seq(x) }
+      val named = pattern { case x: Named => Seq(x) }
 
-    assert(extract(strings, data) == Seq("X", "first", "X", "Y"))
-    assert(extract(ints, data) == Seq())
-    assert(extract(lit, data) == Seq(Literal("X"), Literal("X"), Literal("Y")))
+      val data: Seq[Node] =
+        Seq(Literal("X"), Named("first", Literal("X")), Literal("Y"))
 
-    assert(extract(all, (1, 2.0, "A")) == Seq((1, 2.0, "A"), 1, 2.0, "A"))
-  }
+      assert(extract(strings, data) == Seq("X", "first", "X", "Y"))
+      assert(extract(ints, data) == Seq())
+      assert(extract(lit, data) == Seq(Literal("X"), Literal("X"), Literal("Y")))
 
-  test("recursive tree exraction") {
-    sealed trait Tree
-    case class Branch(left: Tree, right: Tree) extends Tree
-    case class Leaf(content: String) extends Tree
+      assert(extract(all, (1, 2.0, "A")) == Seq((1, 2.0, "A"), 1, 2.0, "A"))
+    }
 
-    val tree = Branch(
-      Branch(Leaf("A"), Leaf("B")),
-      Branch(Leaf("C"), Leaf("D"))
-    )
-    assert(extract(strings, tree) == Seq("A", "B", "C", "D"))
-  }
+    "recursive tree exraction" - {
+      sealed trait Tree
+      case class Branch(left: Tree, right: Tree) extends Tree
+      case class Leaf(content: String) extends Tree
 
-  test("typing") {
-    // test mostly consist in having those compile
-    val x: Seq[String] = extract(strings, Nil)
-    val y: Seq[Int] = extract(ints, (1, "a", 2.0))
-    assertDoesNotCompile("val x: Seq[Int] = extract(strings, (1, \"a\", 2.0))")
+      val tree = Branch(
+        Branch(Leaf("A"), Leaf("B")),
+        Branch(Leaf("C"), Leaf("D"))
+      )
+      assert(extract(strings, tree) == Seq("A", "B", "C", "D"))
+    }
+
+    "typing" - {
+      // test mostly consist in having those compile
+      val x: Seq[String] = extract(strings, Nil)
+      val y: Seq[Int] = extract(ints, (1, "a", 2.0))
+      assert(compileError("val x: Seq[Int] = extract(strings, (1, \"a\", 2.0))").isInstanceOf[Type])
+    }
   }
 }
