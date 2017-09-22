@@ -63,10 +63,10 @@ class RewriteTest extends FunSuite {
   }
 
   test("case-class") {
-    sealed trait AB
-    case class A(left: AB, right: AB)
-    case class B(s: String) extends AB
-    case class C(i: Int, s: String) extends AB
+    sealed trait BC
+    case class A(left: BC, right: BC)
+    case class B(s: String) extends BC
+    case class C(i: Int, s: String) extends BC
     assertCompiles("Trans[String,String,C]")
     assertDoesNotCompile("Trans[Int, String, C]")
 
@@ -79,9 +79,17 @@ class RewriteTest extends FunSuite {
       A(B("aa"), C(1, "bb"))
     )
     val f = (b: B) => C(1, b.s)
-    check(rewrite(f, B("A"): AB), C(1, "A"))
-    check(rewrite(f, A(B("A"), B("B"))), A(C(1, "A"), C(1, "B")))
-    check(rewrite(f, A(C(1, "A"), B("B"))), A(C(1, "A"), C(1, "B")))
+    Trans[B,C,B :+: CNil]
+    Trans[B,C,C :+: CNil]
+    Trans[B,C, B :+: C :+: CNil]
+//    Trans[B, C, BC]
+    val x: C = rewrite(f, B(""))
+    val y: C = rewrite(f, C(1, ""))
+
+    val lifted: BC => BC = { case B(s) => C(1, s) case x => x }
+    check(rewrite(lifted, B("A"): BC), C(1, "A"))
+    check(rewrite(lifted, A(B("A"), B("B"))), A(C(1, "A"), C(1, "B")))
+    check(rewrite(lifted, A(C(1, "A"), B("B"))), A(C(1, "A"), C(1, "B")))
   }
 
   test("collections") {

@@ -20,10 +20,11 @@ object transformations {
   }
 
   trait LowPriority {
+
     /** Low priority transformations that are always superseded by the direct transformation when applicable. */
     /** Identity transformation for literal types (including HNil and CNil) */
-    implicit def identity[FIn, FOut, In: LiteralWitness](implicit ev: FIn =:!= In)
-      : Trans.Aux[FIn, FOut, In, In] =
+    implicit def identity[FIn, FOut, In: LiteralWitness](
+        implicit ev: FIn =:!= In): Trans.Aux[FIn, FOut, In, In] =
       new Trans[FIn, FOut, In] {
         type Result = In
         override def rewrite(f: (FIn) => FOut, in: In): In = in
@@ -43,18 +44,43 @@ object transformations {
       }
 
     /** Transformation for Coproduct types. */
-    implicit def coprodTrans[FIn, FOut, H, T <: Coproduct, TRes <: Coproduct](
-        implicit hf: Lazy[Trans[FIn, FOut, H]],
-        tf: Lazy[Trans.Aux[FIn, FOut, T, TRes]]
-    ): Trans.Aux[FIn, FOut, H :+: T, hf.value.Result :+: TRes] =
+    implicit def coprodTrans[FIn,
+                             FOut,
+                             H,
+                             T <: Coproduct,
+                             HRes,
+                             TRes <: Coproduct](
+        implicit hf: Lazy[Trans.Aux[FIn, FOut, H, HRes]],
+        tf: Lazy[Trans.Aux[FIn, FOut, T, TRes]],
+        ev: FIn =:!= HRes
+    ): Trans.Aux[FIn, FOut, H :+: T, HRes :+: TRes] =
       new Trans[FIn, FOut, H :+: T] {
-        type Result = hf.value.Result :+: TRes
+        type Result = HRes :+: TRes
 
-        override def rewrite(f: (FIn) => FOut,
-                             in: H :+: T): hf.value.Result :+: TRes =
+        override def rewrite(f: (FIn) => FOut, in: H :+: T): HRes :+: TRes =
           in match {
-            case Inl(x) =>
-              Inl(hf.value.rewrite(f, x).asInstanceOf[hf.value.Result])
+            case Inl(x) => Inl(hf.value.rewrite(f, x))
+            case Inr(x) => Inr(tf.value.rewrite(f, x))
+          }
+      }
+
+    /** Transformation for Coproduct types. */
+    implicit def coprodDirectTrans[FIn,
+                             FOut,
+                             H,
+                             T <: Coproduct,
+                             HRes,
+                             TRes <: Coproduct](
+        implicit hf: Lazy[Trans.Aux[FIn, FOut, H, HRes]],
+        tf: Lazy[Trans.Aux[FIn, FOut, T, TRes]],
+        ev: FIn =:= HRes
+    ): Trans.Aux[FIn, FOut, H :+: T, FOut :+: TRes] =
+      new Trans[FIn, FOut, H :+: T] {
+        type Result = FOut :+: TRes
+
+        override def rewrite(f: (FIn) => FOut, in: H :+: T): FOut :+: TRes =
+          in match {
+            case Inl(x) => Inl(f(hf.value.rewrite(f, x).asInstanceOf[FIn]))
             case Inr(x) => Inr(tf.value.rewrite(f, x))
           }
       }
@@ -75,21 +101,21 @@ object transformations {
               .rewrite(f, gen.value.to(in)))
       }
 
-    /** given f: A => B, provide a transformation T => T if T is a super type of A and B.
-      * This is uses runtime reflection to distinguish instances of A */
-    implicit def superTypeDirectTrans[In: ClassTag, Out, T](
-        implicit ev: In <:< T,
-        ev2: Out <:< T
-    ): Trans.Aux[In, Out, T, T] =
-      new Trans[In, Out, T] {
-        val clazz = implicitly[ClassTag[In]].runtimeClass
-        override type Result = T
-
-        override def rewrite(f: (In) => Out, in: T): T = in match {
-          case x: In if clazz.isInstance(x) => f(x)
-          case x                            => x
-        }
-      }
+//    /** given f: A => B, provide a transformation T => T if T is a super type of A and B.
+//      * This is uses runtime reflection to distinguish instances of A */
+//    implicit def superTypeDirectTrans[In: ClassTag, Out, T](
+//        implicit ev: In <:< T,
+//        ev2: Out <:< T
+//    ): Trans.Aux[In, Out, T, T] =
+//      new Trans[In, Out, T] {
+//        val clazz = implicitly[ClassTag[In]].runtimeClass
+//        override type Result = T
+//
+//        override def rewrite(f: (In) => Out, in: T): T = in match {
+//          case x: In if clazz.isInstance(x) => f(x)
+//          case x                            => x
+//        }
+//      }
 
     /** Provide transformation for scala collection types. */
     implicit def collRewrite[FIn, FOut, InCol, Repr[_], OutCol, That](
