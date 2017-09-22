@@ -47,25 +47,19 @@ object transformations {
       }
 
     /** Transformation for Coproduct types. */
-    implicit def coprodTrans[FIn,
-                             FOut,
-                             H,
-                             T <: Coproduct,
-                             TRes1,
-                             TRes2 <: Coproduct](
+    implicit def coprodTrans[FIn, FOut, H, T <: Coproduct, TRes <: Coproduct](
         implicit hf: Lazy[Trans[FIn, FOut, H]],
-        tf: Lazy[Trans.Aux[FIn, FOut, T, TRes1]],
-        ev: TRes1 =:= TRes2
-    ): Trans.Aux[FIn, FOut, H :+: T, hf.value.Result :+: TRes2] =
+        tf: Lazy[Trans.Aux[FIn, FOut, T, TRes]]
+    ): Trans.Aux[FIn, FOut, H :+: T, hf.value.Result :+: TRes] =
       new Trans[FIn, FOut, H :+: T] {
-        type Result = hf.value.Result :+: TRes2
+        type Result = hf.value.Result :+: TRes
 
         override def rewrite(f: (FIn) => FOut,
-                             in: H :+: T): hf.value.Result :+: TRes2 =
+                             in: H :+: T): hf.value.Result :+: TRes =
           in match {
             case Inl(x) =>
               Inl(hf.value.rewrite(f, x).asInstanceOf[hf.value.Result])
-            case Inr(x) => Inr(tf.value.rewrite(f, x).asInstanceOf[TRes2])
+            case Inr(x) => Inr(tf.value.rewrite(f, x))
           }
       }
 
