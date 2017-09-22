@@ -31,19 +31,16 @@ object transformations {
       }
 
     /** Transformation for HLists */
-    implicit def hListTrans[FIn, FOut, H, T <: HList, TRes1, TRes2 <: HList](
-        implicit hf: Lazy[Trans[FIn, FOut, H]],
-        tf: Trans.Aux[FIn, FOut, T, TRes1],
-        ev: TRes1 =:= TRes2
-    ): Trans.Aux[FIn, FOut, H :: T, hf.value.Result :: TRes2] =
+    implicit def hListTrans[FIn, FOut, H, T <: HList, HRes, TRes <: HList](
+        implicit hf: Lazy[Trans.Aux[FIn, FOut, H, HRes]],
+        tf: Lazy[Trans.Aux[FIn, FOut, T, TRes]]
+    ): Trans.Aux[FIn, FOut, H :: T, HRes :: TRes] =
       new Trans[FIn, FOut, H :: T] {
-        type Result = hf.value.Result :: TRes2
+        type Result = HRes :: TRes
 
-        override def rewrite(f: (FIn) => FOut,
-                             in: H :: T): hf.value.Result :: TRes2 =
-          (hf.value.rewrite(f, in.head) :: tf
+        override def rewrite(f: (FIn) => FOut, in: H :: T): HRes :: TRes =
+          hf.value.rewrite(f, in.head) :: tf.value
             .rewrite(f, in.tail)
-            .asInstanceOf[TRes2]).asInstanceOf[hf.value.Result :: TRes2]
       }
 
     /** Transformation for Coproduct types. */
