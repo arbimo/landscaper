@@ -17,3 +17,14 @@ libraryDependencies ++= Seq(
 )
 
 testFrameworks += new TestFramework("utest.runner.Framework")
+
+crossPaths := true
+
+// To sync with Maven central
+publishMavenStyle := true
+
+// POM settings for Sonatype
+homepage := Some(url("https://github.com/arthur-bit-monnot/landscaper"))
+scmInfo := Some(ScmInfo(url("https://github.com/arthur-bit-monnot/landscaper"), "git@github.com:arthur-bit-monnot/landscaper.git"))
+developers += Developer("abitmonn", "Arthur Bit-Monnot", "arthur.bit-monnot@laas.fr", url("https://github.com/arthur-bit-monnot"))
+licenses += ("BSD-2-Clause", url("https://opensource.org/licenses/BSD-2-Clause"))
