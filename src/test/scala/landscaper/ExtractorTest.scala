@@ -6,8 +6,8 @@ import utest._
 object ExtractorTest extends TestSuite {
 
   val strings = pattern { case x: String => Seq(x) }
-  val ints = pattern { case x: Int       => Seq(x) }
-  val all = pattern { case x: Any        => Seq(x) }
+  val ints    = pattern { case x: Int    => Seq(x) }
+  val all     = pattern { case x: Any    => Seq(x) }
 
   val tests = Tests {
 
@@ -21,10 +21,10 @@ object ExtractorTest extends TestSuite {
     "ADT extraction" - {
       sealed trait Node
       case class Named(name: String, node: Literal) extends Node
-      case class Literal(content: String) extends Node
+      case class Literal(content: String)           extends Node
 
-      val lit = pattern { case x: Literal => Seq(x) }
-      val named = pattern { case x: Named => Seq(x) }
+      val lit   = pattern { case x: Literal => Seq(x) }
+      val named = pattern { case x: Named   => Seq(x) }
 
       val data: Seq[Node] =
         Seq(Literal("X"), Named("first", Literal("X")), Literal("Y"))
@@ -39,7 +39,7 @@ object ExtractorTest extends TestSuite {
     "recursive tree exraction" - {
       sealed trait Tree
       case class Branch(left: Tree, right: Tree) extends Tree
-      case class Leaf(content: String) extends Tree
+      case class Leaf(content: String)           extends Tree
 
       val tree = Branch(
         Branch(Leaf("A"), Leaf("B")),
@@ -51,7 +51,7 @@ object ExtractorTest extends TestSuite {
     "typing" - {
       // test mostly consist in having those compile
       val x: Seq[String] = extract(strings, Nil)
-      val y: Seq[Int] = extract(ints, (1, "a", 2.0))
+      val y: Seq[Int]    = extract(ints, (1, "a", 2.0))
       assert(compileError("val x: Seq[Int] = extract(strings, (1, \"a\", 2.0))").isInstanceOf[Type])
     }
   }

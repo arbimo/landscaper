@@ -9,12 +9,12 @@ object witness {
     */
   trait LiteralWitness[T]
   object LiteralWitness {
-    implicit val intWitness = literal[Int]
-    implicit val stringWitness = literal[String]
-    implicit val doubleWitness = literal[Double]
-    implicit val hnilWitness = literal[HNil]
+    implicit val intWitness      = literal[Int]
+    implicit val stringWitness   = literal[String]
+    implicit val doubleWitness   = literal[Double]
+    implicit val hnilWitness     = literal[HNil]
     implicit val hnilTypeWitness = literal[HNil.type]
-    implicit val cnilWitness = literal[CNil]
+    implicit val cnilWitness     = literal[CNil]
   }
 
   /** Creates a new literal witness for the given type. */

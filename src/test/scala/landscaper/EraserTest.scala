@@ -25,8 +25,7 @@ object EraserTest extends TestSuite {
     "seq-set" - {
       assert(erase(aPred)(Seq(Set("A", "B", "AA"))) == Seq(Set("B")))
       val x: Seq[Set[String]] = erase(aPred)(Seq(Set("A")))
-      assert(
-        compileError("val x: Seq[Seq[String]] = erase(aPred)(Seq(Set(\"A\")))").isInstanceOf[Type])
+      assert(compileError("val x: Seq[Seq[String]] = erase(aPred)(Seq(Set(\"A\")))").isInstanceOf[Type])
     }
 
     "tuple-seq" - {

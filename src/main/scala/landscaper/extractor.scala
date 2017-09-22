@@ -43,29 +43,24 @@ object extractor {
     def apply[T](implicit ext: Extractor[T]): Extractor[T] = ext
 
     def terminal[T]: Extractor[T] = new Extractor[T] {
-      override protected def extractInner(f: PatternFinder[Any])(
-          t: T): Seq[f.Pattern] = Seq()
+      override protected def extractInner(f: PatternFinder[Any])(t: T): Seq[f.Pattern] = Seq()
     }
 
     // anything identified as a literal is terminal node
     implicit def extractLiteral[T: witness.LiteralWitness]: Extractor[T] =
       terminal[T]
 
-    implicit def extractHList[H, T <: HList](
-        implicit hExt: Lazy[Extractor[H]],
-        tExt: Extractor[T]): Extractor[H :: T] =
+    implicit def extractHList[H, T <: HList](implicit hExt: Lazy[Extractor[H]],
+                                             tExt: Extractor[T]): Extractor[H :: T] =
       new Extractor[H :: T] {
-        override def extractInner(f: PatternFinder[Any])(
-            l: H :: T): Seq[f.Pattern] =
+        override def extractInner(f: PatternFinder[Any])(l: H :: T): Seq[f.Pattern] =
           hExt.value.extract(f)(l.head) ++ tExt.extractInner(f)(l.tail)
       }
 
-    implicit def extractCoproduct[H, T <: Coproduct](
-        implicit hExt: Lazy[Extractor[H]],
-        tExt: Extractor[T]): Extractor[H :+: T] =
+    implicit def extractCoproduct[H, T <: Coproduct](implicit hExt: Lazy[Extractor[H]],
+                                                     tExt: Extractor[T]): Extractor[H :+: T] =
       new Extractor[H :+: T] {
-        override protected def extractInner(f: PatternFinder[Any])(
-            t: H :+: T): Seq[f.Pattern] =
+        override protected def extractInner(f: PatternFinder[Any])(t: H :+: T): Seq[f.Pattern] =
           t match {
             case Inl(x) => hExt.value.extractInner(f)(x)
             case Inr(x) => tExt.extractInner(f)(x)
@@ -73,8 +68,7 @@ object extractor {
       }
 
     /** Extractor for anything wit a Generic representation */
-    implicit def extractGen[T, R](implicit gen: Generic.Aux[T, R],
-                                  ext: Lazy[Extractor[R]]): Extractor[T] =
+    implicit def extractGen[T, R](implicit gen: Generic.Aux[T, R], ext: Lazy[Extractor[R]]): Extractor[T] =
       new Extractor[T] {
         override def extractInner(f: PatternFinder[Any])(t: T): Seq[f.Pattern] =
           ext.value.extractInner(f)(gen.to(t))
@@ -85,8 +79,7 @@ object extractor {
         ev: Coll[T] <:< Traversable[T]
     ): Extractor[Coll[T]] =
       new Extractor[Coll[T]] {
-        override protected def extractInner(f: PatternFinder[Any])(
-            t: Coll[T]): Seq[f.Pattern] =
+        override protected def extractInner(f: PatternFinder[Any])(t: Coll[T]): Seq[f.Pattern] =
           t.flatMap(e => ext.extract(f)(e)).toSeq
       }
 

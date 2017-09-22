@@ -9,7 +9,7 @@ import scala.collection.generic.CanBuildFrom
 object eraser {
 
   type PartialPredicate = PartialFunction[Any, Boolean]
-  type Predicate = (Any => Boolean)
+  type Predicate        = (Any => Boolean)
 
   def predicate(ppred: PartialPredicate): Predicate =
     x => if (ppred.isDefinedAt(x)) ppred(x) else false
@@ -36,15 +36,13 @@ object eraser {
         implicit gen: Generic.Aux[T, R],
         rEr: Lazy[Eraser[R]]
     ): Eraser[T] =
-      instance(
-        (pred: Predicate, t: T) => gen.from(rEr.value.erase(pred)(gen.to(t))))
+      instance((pred: Predicate, t: T) => gen.from(rEr.value.erase(pred)(gen.to(t))))
 
     implicit def hListEraser[H, T <: HList](
         implicit hEr: Lazy[Eraser[H]],
         tEr: Eraser[T]
     ): Eraser[H :: T] =
-      instance[H :: T]((p: Predicate, l: H :: T) =>
-        hEr.value.erase(p)(l.head) :: tEr.erase(p)(l.tail))
+      instance[H :: T]((p: Predicate, l: H :: T) => hEr.value.erase(p)(l.head) :: tEr.erase(p)(l.tail))
 
     implicit def coprodEraser[H, T <: Coproduct](
         implicit hEr: Lazy[Eraser[H]],
@@ -56,10 +54,7 @@ object eraser {
           case Inr(x) => Inr(tEr.erase(p)(x))
       })
 
-    implicit def collEraser[
-        Content,
-        Repr[Content] <: GenTraversableLike[Content, Repr[Content]],
-        That](
+    implicit def collEraser[Content, Repr[Content] <: GenTraversableLike[Content, Repr[Content]], That](
         implicit er: Lazy[Eraser[Content]],
         ev: CanBuildFrom[Repr[Content], Content, That],
         ev2: That =:= Repr[Content]
