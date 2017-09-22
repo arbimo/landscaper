@@ -90,11 +90,11 @@ object RewriteTest extends TestSuite {
       Trans[Int, Int, Option[Option[String]]]
       assert(rewrite(toLowerCase, Some(Some("A"))) == Some(Some("a")))
 
+      Trans[Int, Int, N]
       // FIXME: we should not require explicit type to work
       assert(
         rewrite((x: Option[String]) => (None: Option[String]), Some(Some("A"): Option[String])) == Some(
           None))
-      Trans[Int, Int, N]
     }
 
     "recursive ADT" - {
@@ -111,7 +111,6 @@ object RewriteTest extends TestSuite {
       Trans[String, String, Branch]
       Trans[String, String, Tree]
       val tree = Branch(Leaf("A"), Branch(Leaf("B"), Leaf("C")))
-      println(Trans[String, String, Tree])
       assert(rewrite(toLowerCase, Leaf("A"): Tree) == Leaf("a"))
       assert(rewrite(toLowerCase, tree) == Branch(Leaf("a"), Branch(Leaf("b"), Leaf("c"))))
     }
@@ -124,7 +123,6 @@ object RewriteTest extends TestSuite {
       val res3: String :: String :: HNil = rewrite(intToString, 1 :: "A" :: HNil)
 
       assert(compileError("val res: Int = rewrite(intToString, 1)").isInstanceOf[Type])
-
     }
   }
 
