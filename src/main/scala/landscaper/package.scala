@@ -38,11 +38,11 @@ package object landscaper {
   // ======== Removal from nested collections ========
 
   /** Removes any instance matches by the predicate appearing in "t". */
-  def erase[T: Eraser](pred: Any => Boolean)(t: T): T =
+  def erase[T: Eraser](pred: Any => Boolean, t: T): T =
     Eraser[T].erase(pred)(t)
 
   /** Removes any instance matches by the predicate appearing in "t". */
-  def erase[T: Eraser](pred: PartialFunction[Any, Boolean])(t: T): T =
+  def erase[T: Eraser](pred: PartialFunction[Any, Boolean], t: T): T =
     Eraser[T].erase(pred)(t)
 
 }

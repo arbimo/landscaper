@@ -11,25 +11,25 @@ object EraserTest extends TestSuite {
   val tests = Tests {
 
     "literal" - {
-      assert(erase(predicate { case _: String => true })("coucou") == "coucou")
+      assert(erase(predicate { case _: String => true }, "coucou") == "coucou")
     }
 
     "seq" - {
-      assert(erase(predicate { case x: String => x == "A" })(Seq("A", "B")) == Seq("B"))
+      assert(erase(predicate { case x: String => x == "A" }, Seq("A", "B")) == Seq("B"))
     }
 
     "seq-seq" - {
-      assert(erase(aPred)(Seq(Seq("A", "B", "AA"))) == Seq(Seq("B")))
+      assert(erase(aPred, Seq(Seq("A", "B", "AA"))) == Seq(Seq("B")))
     }
 
     "seq-set" - {
-      assert(erase(aPred)(Seq(Set("A", "B", "AA"))) == Seq(Set("B")))
-      val x: Seq[Set[String]] = erase(aPred)(Seq(Set("A")))
+      assert(erase(aPred, Seq(Set("A", "B", "AA"))) == Seq(Set("B")))
+      val x: Seq[Set[String]] = erase(aPred, Seq(Set("A")))
       assert(compileError("val x: Seq[Seq[String]] = erase(aPred)(Seq(Set(\"A\")))").isInstanceOf[Type])
     }
 
     "tuple-seq" - {
-      assert(erase(aPred)((Seq("A", "B"), Seq(1, 2))) == (Seq("B"), Seq(1, 2)))
+      assert(erase(aPred, (Seq("A", "B"), Seq(1, 2))) == (Seq("B"), Seq(1, 2)))
     }
 
     "recursive tree erase" - {
@@ -41,7 +41,7 @@ object EraserTest extends TestSuite {
         Branch(Leaf(Seq("A")), Leaf(Seq("B"))),
         Leaf(Seq("A", "B"))
       )
-      assert(erase(aPred)(tree) == Branch(Branch(Leaf(Seq()), Leaf(Seq("B"))), Leaf(Seq("B"))))
+      assert(erase(aPred, tree) == Branch(Branch(Leaf(Seq()), Leaf(Seq("B"))), Leaf(Seq("B"))))
     }
   }
 }
