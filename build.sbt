@@ -13,5 +13,8 @@ scalacOptions ++= Seq(
 
 libraryDependencies ++= Seq(
   "com.chuusai" %% "shapeless" % "2.3.2",
+  "com.lihaoyi" %% "utest" % "0.5.3" % "test",
   "org.scalatest" %% "scalatest" % "3.0.1" % "test"
 )
+
+testFrameworks += new TestFramework("utest.runner.Framework")
