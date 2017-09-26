@@ -19,7 +19,7 @@ object transformations {
     def rewrite(f: FIn => FOut, in: In): Result
   }
 
-  trait LowPriority {
+  trait ExtraLowPriority {
 
     /** Low priority transformations that are always superseded by the direct transformation when applicable. */
     /** Identity transformation for literal types (including HNil and CNil) */
@@ -29,6 +29,27 @@ object transformations {
         type Result = In
         override def rewrite(f: (FIn) => FOut, in: In): In = in
       }
+  }
+
+  trait LowPriority extends ExtraLowPriority {
+
+    /** Highest priority case: given a function, f: A => B, transform an instance of A into a B. */
+    implicit def directTransformation[FIn, FOut, In](
+        implicit ev: In <:< FIn): Trans.Aux[FIn, FOut, In, FOut] =
+      new Trans[FIn, FOut, In] {
+        type Result = FOut
+        override def rewrite(f: FIn => FOut, in: In): FOut = f(in)
+      }
+  }
+
+
+  object Trans extends LowPriority {
+    type Aux[FIn, FOut, In, Result0] = Trans[FIn, FOut, In] {
+      type Result = Result0
+    }
+
+    /** Implicitly finds a transformation of "In" by a function "f: FIn => FOut" */
+    def apply[FIn, FOut, In](implicit ev: Trans[FIn, FOut, In]): Aux[FIn, FOut, In, ev.Result] = ev
 
     /** Transformation for HLists */
     implicit def hListTrans[FIn, FOut, H, T <: HList, HRes, TRes <: HList](
@@ -75,12 +96,11 @@ object transformations {
           }
       }
 
-    /** Transformation for sealed trait and case classes.
-      * It relies on the shapeless to find their generic representation.
-      * This also works for tuples as long as their type does not change. */
-    implicit def genTrans[FIn, FOut, In, Repr](
+    /** Transformation for sealed trait and case classes on which the transformation is not directly applicable. */
+    implicit def genTransNonApplicable[FIn, FOut, In, Repr](
         implicit gen: Lazy[Generic.Aux[In, Repr]],
-        rFunc: Lazy[Trans.Aux[FIn, FOut, Repr, Repr]]
+        rFunc: Lazy[Trans.Aux[FIn, FOut, Repr, Repr]],
+        ev: In <:!< FIn
     ): Trans.Aux[FIn, FOut, In, In] =
       new Trans[FIn, FOut, In] {
         override type Result = In
@@ -91,21 +111,20 @@ object transformations {
               .rewrite(f, gen.value.to(in)))
       }
 
-//    /** given f: A => B, provide a transformation T => T if T is a super type of A and B.
-//      * This is uses runtime reflection to distinguish instances of A */
-//    implicit def superTypeDirectTrans[In: ClassTag, Out, T](
-//        implicit ev: In <:< T,
-//        ev2: Out <:< T
-//    ): Trans.Aux[In, Out, T, T] =
-//      new Trans[In, Out, T] {
-//        val clazz = implicitly[ClassTag[In]].runtimeClass
-//        override type Result = T
-//
-//        override def rewrite(f: (In) => Out, in: T): T = in match {
-//          case x: In if clazz.isInstance(x) => f(x)
-//          case x                            => x
-//        }
-//      }
+    /** Transformation for sealed trait and case classes on which the transformation is directly applicable. */
+    implicit def genTransApplicable[FIn, FOut, In, Repr](
+        implicit gen: Lazy[Generic.Aux[In, Repr]],
+        rFunc: Lazy[Trans.Aux[FIn, FOut, Repr, Repr]],
+        ev: In <:< FIn
+    ): Trans.Aux[FIn, FOut, In, FOut] =
+      new Trans[FIn, FOut, In] {
+        override type Result = FOut
+
+        override def rewrite(f: (FIn) => FOut, in: In): FOut =
+          f(
+            gen.value.from(rFunc.value
+              .rewrite(f, gen.value.to(in))))
+      }
 
     /** Provide transformation for scala collection types. */
     implicit def collRewrite[FIn, FOut, InCol, Repr[_], OutCol, That](
@@ -120,22 +139,6 @@ object transformations {
           val f2: InCol => OutCol = (x: InCol) => fInner.rewrite(f, x)
           in.map(f2)(bf)
         }
-      }
-  }
-
-  object Trans extends LowPriority {
-    type Aux[FIn, FOut, In, Result0] = Trans[FIn, FOut, In] {
-      type Result = Result0
-    }
-
-    /** Implicitly finds a transformation of "In" by a function "f: FIn => FOut" */
-    def apply[FIn, FOut, In](implicit ev: Trans[FIn, FOut, In]): Aux[FIn, FOut, In, ev.Result] = ev
-
-    /** Highest priority case: given a function, f: A => B, transform an instance of A into a B. */
-    implicit def directTransformation[In, Out]: Trans.Aux[In, Out, In, Out] =
-      new Trans[In, Out, In] {
-        type Result = Out
-        override def rewrite(f: (In) => Out, in: In): Out = f(in)
       }
   }
 }

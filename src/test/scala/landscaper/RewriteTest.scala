@@ -2,13 +2,20 @@ package landscaper
 
 import utest._
 import shapeless._
-import transformations._
+import transformations.Trans
 import utest.CompileError.Type
 
 object RewriteTest extends TestSuite {
 
   val intToString: Int => String    = (x: Int) => x.toString
   val toLowerCase: String => String = (x: String) => x.toLowerCase
+
+  // for some reasons, UTest crashes at runtime when those are defined inside the test
+  sealed trait Scope {
+    def +(name: String): Inner = Inner(this, name)
+  }
+  object Root                                   extends Scope
+  case class Inner(parent: Scope, name: String) extends Scope
 
   val tests = Tests {
     "literals" - {
@@ -93,8 +100,7 @@ object RewriteTest extends TestSuite {
       Trans[Int, Int, N]
       // FIXME: we should not require explicit type to work
       assert(
-        rewrite((x: Option[String]) => (None: Option[String]), Some(Some("A"): Option[String])) == Some(
-          None))
+        rewrite((x: Option[String]) => (None: Option[String]), Some(Some("A"): Option[String])) == Some(None))
     }
 
     "recursive ADT" - {
@@ -113,6 +119,20 @@ object RewriteTest extends TestSuite {
       val tree = Branch(Leaf("A"), Branch(Leaf("B"), Leaf("C")))
       assert(rewrite(toLowerCase, Leaf("A"): Tree) == Leaf("a"))
       assert(rewrite(toLowerCase, tree) == Branch(Leaf("a"), Branch(Leaf("b"), Leaf("c"))))
+    }
+
+    "recursive-adt with self replacement" - {
+      val scope = Root + "a" + "b" + "c"
+
+      val rule: Inner => Inner = (x: Inner) => {
+        if (x == (Root + "a" + "b")) Root + "a"
+        else x
+      }
+      val res = rewrite(rule, scope)
+
+      assert(res == (Root + "a" + "c"))
+      assert(rewrite(rule, Root + "a") == Root + "a")
+      assert(rewrite(rule, Root + "a" + "b") == Root + "a")
     }
 
     "typing" - {
