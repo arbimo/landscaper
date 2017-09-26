@@ -2,7 +2,7 @@ name := "landscaper"
 
 organization := "com.github.arthur-bit-monnot"
 
-version := "0.1"
+version := "0.1.1-SNAPSHOT"
 
 scalaVersion := "2.12.3"
 
